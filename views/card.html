@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A card for you</title>
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Caveat:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap&subset=vietnamese" rel="stylesheet">
+  <script>
+    (function () {
+      try {
+        var s = localStorage.getItem('cardmaker.theme');
+        var dark = s ? s === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/card.css">
+  <link rel="stylesheet" href="/css/view.css">
+</head>
+<body class="view-body">
+  <div class="view-topbar">
+    <select class="lang-select" id="langSelect" aria-label="Language"></select>
+    <button type="button" class="theme-toggle" data-theme-toggle aria-label="Toggle theme"></button>
+  </div>
+
+  <div class="view-stage" id="stage">
+    <div class="state-screen" id="loading">
+      <div class="spinner"></div>
+      <p class="muted" data-i18n="view.opening">Opening the card…</p>
+    </div>
+
+    <div class="view-inner" id="content" hidden>
+      <div class="view-card-wrap">
+        <div class="card-surface" id="card"></div>
+      </div>
+
+      <div class="view-meta">
+        <div class="left"><span class="tag tag-blue" data-i18n="view.private">Private card</span></div>
+        <span class="expiry" id="expiry"></span>
+      </div>
+
+      <div class="music-slot" id="musicSlot" hidden></div>
+
+      <div class="view-actions">
+        <button class="btn btn-ghost" id="downloadBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+          <span data-i18n="view.download">Download image</span>
+        </button>
+        <a class="btn btn-primary" href="/" data-i18n="view.makeOwn">Make your own</a>
+      </div>
+
+      <!-- Thanh thả cảm xúc (#11) -->
+      <div class="react-bar" id="reactBar" hidden>
+        <span class="react-h" data-i18n="view.react.h">Reactions</span>
+        <div class="react-btns" id="reactBtns"></div>
+      </div>
+
+      <div class="reply-box" id="replyBox" hidden>
+        <h3 data-i18n="view.reply.h">Reply a few words</h3>
+        <p class="muted" data-i18n="view.reply.p">Send a note to the person who made this card.</p>
+        <div id="replyForm">
+          <input id="replySender" type="text" maxlength="80" data-i18n-ph="view.reply.namePh">
+          <textarea id="replyBody" maxlength="2000" data-i18n-ph="view.reply.bodyPh"></textarea>
+          <button class="btn btn-primary" id="sendReply" data-i18n="view.reply.send">Send message</button>
+        </div>
+        <div class="reply-sent" id="replySent" hidden>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5L9 17.5L20 6.5"/></svg>
+          <span data-i18n="view.reply.sent">Your message was sent. Thank you!</span>
+        </div>
+      </div>
+
+      <!-- Sổ lưu bút công khai (#10) -->
+      <div class="guestbook" id="guestbook" hidden>
+        <h3 data-i18n="view.guestbook.h">Guestbook</h3>
+        <p class="muted" data-i18n="view.guestbook.p">Messages everyone has sent to this card.</p>
+        <div class="gb-list" id="gbList"></div>
+      </div>
+    </div>
+
+    <!-- Locked (scheduled) -->
+    <div class="state-screen" id="lockedState" hidden>
+      <div class="icon">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      </div>
+      <h2 data-i18n="view.locked.h">Not open yet</h2>
+      <p data-i18n="view.locked.p">This card is scheduled. Come back when it is time to open.</p>
+      <p class="mono" id="lockCountdown" style="margin-top:4px;color:var(--ink)"></p>
+    </div>
+
+    <!-- Error / expired -->
+    <div class="state-screen" id="errorState" hidden>
+      <div class="icon">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><path d="M4 8l8 5 8-5"/></svg>
+      </div>
+      <h2 id="errTitle" data-i18n="view.gone.h">This card is gone</h2>
+      <p id="errMsg" data-i18n="view.gone.p">It may have expired or the link is wrong.</p>
+      <a class="btn btn-primary" href="/" style="margin-top:8px" data-i18n="view.makeOwn">Make your own</a>
+    </div>
+  </div>
+
+  <footer class="view-foot">
+    <a href="/" data-i18n-html="view.foot">Made with <strong>Cards</strong></a>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
+  <script type="module">
+    import { buildLangSwitcher } from '/js/i18n.js';
+    import { initThemeToggle } from '/js/theme.js';
+    buildLangSwitcher(document.getElementById('langSelect'));
+    initThemeToggle();
+  </script>
+  <script type="module" src="/js/card.js"></script>
+</body>
+</html>

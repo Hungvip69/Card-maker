@@ -1,0 +1,150 @@
+/* ====== Render thiệp dùng chung cho editor preview + trang người nhận ====== */
+
+.card-surface {
+  --c-fg: #2f3437;
+  --c-accent: #956400;
+  --c-font: var(--serif);
+  --c-title-size: 2.6rem;
+  --c-radius: 12px;
+
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  color: var(--c-fg);
+  border-radius: var(--c-radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  isolation: isolate;
+  container-type: inline-size;
+  background: #fbf3db;
+}
+
+/* ---- Khung viền (data-frame) ---- */
+.card-surface .c-frame {
+  position: absolute; inset: 14px;
+  border-radius: calc(var(--c-radius) - 4px);
+  pointer-events: none; z-index: 4;
+}
+.card-surface[data-frame="none"] .c-frame { display: none; }
+.card-surface[data-frame="line"] .c-frame {
+  border: 1px solid color-mix(in srgb, var(--c-accent) 38%, transparent);
+}
+.card-surface[data-frame="double"] .c-frame {
+  border: 3px double color-mix(in srgb, var(--c-accent) 45%, transparent);
+}
+.card-surface[data-frame="dashed"] .c-frame {
+  border: 1px dashed color-mix(in srgb, var(--c-accent) 50%, transparent);
+}
+.card-surface[data-frame="inset"] .c-frame {
+  inset: 10px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-accent) 30%, transparent),
+              inset 0 0 0 6px color-mix(in srgb, var(--c-accent) 12%, transparent);
+}
+
+/* ---- Ảnh chính ---- */
+.card-surface .c-image {
+  position: relative; width: 100%; height: 46%;
+  object-fit: cover; z-index: 1; flex-shrink: 0;
+}
+.card-surface.layout-full .c-image-full {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; z-index: 0;
+}
+.card-surface .c-scrim {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.15) 45%, rgba(0,0,0,0.05) 100%);
+}
+.card-surface.layout-full { color: #fff; }
+.card-surface.layout-full .c-recipient,
+.card-surface.layout-full .c-sender { color: #fff; }
+
+/* ---- Thân thiệp ---- */
+.card-surface .c-body {
+  position: relative; z-index: 2;
+  flex: 1; display: flex; flex-direction: column;
+  justify-content: center; align-items: center; text-align: center;
+  padding: 30px 32px 36px; gap: 14px;
+}
+.card-surface.layout-full .c-body { justify-content: flex-end; }
+
+.card-surface .c-recipient {
+  font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--c-accent);
+}
+.card-surface .c-title {
+  font-family: var(--c-font); font-weight: 400;
+  font-size: clamp(1.4rem, calc(var(--c-title-size) * 0.42 + 3cqw), var(--c-title-size));
+  line-height: 1.08; letter-spacing: -0.02em;
+}
+.card-surface .c-message {
+  font-size: 0.98rem; line-height: 1.7; max-width: 36ch;
+  color: color-mix(in srgb, currentColor 86%, transparent);
+  white-space: pre-wrap;
+}
+.card-surface .c-rule { width: 40px; height: 1px; background: var(--c-accent); opacity: 0.5; margin: 2px 0; }
+.card-surface .c-sender { font-family: var(--c-font); font-size: 1.05rem; font-style: italic; color: var(--c-accent); }
+
+/* ---- Phông chữ ---- */
+.card-surface.font-serif  { --c-font: var(--serif); }
+.card-surface.font-sans   { --c-font: var(--sans); }
+.card-surface.font-mono   { --c-font: var(--mono); }
+.card-surface.font-display{ --c-font: var(--display); }
+.card-surface.font-hand   { --c-font: var(--hand); }
+.card-surface.font-sans .c-title,
+.card-surface.font-mono .c-title { letter-spacing: -0.01em; }
+
+/* ---- Stickers & overlay ảnh (di chuyển được) ---- */
+.card-surface .c-overlays { position: absolute; inset: 0; z-index: 3; }
+.card-surface .c-sticker {
+  position: absolute; font-size: 34px; line-height: 1;
+  user-select: none; transform-origin: center;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.12));
+}
+.card-surface .c-overlay {
+  position: absolute; width: 30%; max-width: 160px;
+  transform-origin: center; pointer-events: none;
+}
+.card-surface .c-overlay.round { border-radius: 50%; }
+
+/* ---- Khối chữ tự do (#6): kéo để di chuyển, nháy đúp để sửa tại chỗ ---- */
+.card-surface .c-textblock {
+  position: absolute; transform-origin: center;
+  pointer-events: auto; cursor: grab;
+  user-select: none; white-space: pre; max-width: 80%;
+  line-height: 1.2;
+}
+.card-surface .c-textblock:focus { outline: none; }
+.card-surface .c-textblock.editing,
+.card-surface .c-textblock[contenteditable="true"] {
+  cursor: text; user-select: text;
+  outline: 2px dashed var(--c-accent, #956400); outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* ---- Lớp nét vẽ ---- */
+.card-surface .c-drawing {
+  position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none;
+  image-rendering: -webkit-optimize-contrast; image-rendering: auto;
+}
+
+/* ====== Effects layer ====== */
+.fx-layer { position: absolute; inset: 0; z-index: 5; pointer-events: none; overflow: hidden; }
+.fx-piece { position: absolute; top: -12%; will-change: transform; }
+
+@keyframes fx-fall { to { transform: translateY(130cqh) rotate(var(--spin, 360deg)); } }
+@keyframes fx-sway {
+  0%   { transform: translateY(0) translateX(0) rotate(0); }
+  50%  { transform: translateY(65cqh) translateX(18px) rotate(calc(var(--spin) * 0.5)); }
+  100% { transform: translateY(130cqh) translateX(-12px) rotate(var(--spin)); }
+}
+@keyframes fx-rise { to { transform: translateY(-130cqh) translateX(14px); } }
+@keyframes fx-twinkle { 0%,100% { opacity: 0; transform: scale(0.4); } 50% { opacity: 0.9; transform: scale(1); } }
+@keyframes fx-drift { 0%,100% { transform: translate(0,0); } 50% { transform: translate(16px, -18px); } }
+@keyframes fx-burst {
+  0%   { opacity: 1; transform: translate(0,0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--bx,20px), var(--by,20px)) scale(0.4); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fx-piece { animation: none !important; opacity: 0.55; }
+}

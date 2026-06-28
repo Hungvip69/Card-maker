@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cards Maker — Design your card</title>
+  <meta name="description" content="Design your card on Cards Maker: rich customization, a private link, self-expiring after 7 days.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Caveat:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap&subset=vietnamese" rel="stylesheet">
+  <script>
+    (function () {
+      try {
+        var s = localStorage.getItem('cardmaker.theme');
+        var dark = s ? s === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/card.css">
+  <link rel="stylesheet" href="/css/editor.css">
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="/">
+        <span class="mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><path d="M4 8l8 5 8-5"/></svg>
+        </span>
+        Cards Maker
+      </a>
+      <div class="nav-links">
+        <a href="/" data-i18n="nav.backHome">← Home</a>
+        <select class="lang-select" id="langSelect" aria-label="Language"></select>
+        <button type="button" class="theme-toggle" data-theme-toggle aria-label="Toggle theme"></button>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <section id="editor" style="padding-top:48px">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="eyebrow" data-i18n="ed.eyebrow">Card editor</span>
+          <h2 data-i18n="ed.h2">Design your card</h2>
+          <p data-i18n="ed.sub">Edit on the left, preview on the right.</p>
+        </div>
+
+        <div class="editor">
+          <!-- Controls -->
+          <div class="editor-controls reveal">
+            <div class="field">
+              <label data-i18n="ed.template">Pick a template</label>
+              <div class="template-grid" id="templateGrid"></div>
+            </div>
+
+            <hr class="divider">
+
+            <div class="field">
+              <label for="f-recipient" data-i18n="ed.to">To</label>
+              <input id="f-recipient" type="text" maxlength="80" data-i18n-ph="ed.toPh">
+            </div>
+            <div class="field">
+              <label for="f-title" data-i18n="ed.title">Title</label>
+              <input id="f-title" type="text" maxlength="120" data-i18n-ph="ed.titlePh">
+            </div>
+            <div class="field">
+              <label for="f-message" data-i18n="ed.message">Message</label>
+              <textarea id="f-message" rows="4" maxlength="2000" data-i18n-ph="ed.messagePh"></textarea>
+              <span class="hint"><span id="msgCount">0</span>/2000</span>
+            </div>
+            <div class="field">
+              <label for="f-sender" data-i18n="ed.sender">Signed</label>
+              <input id="f-sender" type="text" maxlength="80" data-i18n-ph="ed.senderPh">
+            </div>
+
+            <hr class="divider">
+
+            <!-- Background style -->
+            <div class="field">
+              <label data-i18n="ed.bgStyle">Background</label>
+              <div class="seg" id="bgStyleSeg">
+                <button type="button" data-bgstyle="solid" data-i18n="ed.solid">Solid</button>
+                <button type="button" data-bgstyle="gradient" data-i18n="ed.gradient">Gradient</button>
+                <button type="button" data-bgstyle="pattern" data-i18n="ed.pattern">Pattern</button>
+              </div>
+            </div>
+            <div class="field cond" id="patternField" hidden>
+              <div class="seg seg-wrap" id="patternSeg">
+                <button type="button" data-pattern="dots" data-i18n="ed.pat.dots">Dots</button>
+                <button type="button" data-pattern="grid" data-i18n="ed.pat.grid">Grid</button>
+                <button type="button" data-pattern="paper" data-i18n="ed.pat.paper">Paper</button>
+                <button type="button" data-pattern="diagonal" data-i18n="ed.pat.diagonal">Diagonal</button>
+                <button type="button" data-pattern="confettiBg" data-i18n="ed.pat.confettiBg">Confetti</button>
+              </div>
+            </div>
+            <div class="field cond" id="angleField" hidden>
+              <label data-i18n="ed.angle">Gradient angle</label>
+              <input id="f-angle" type="range" min="0" max="360" value="135">
+            </div>
+
+            <!-- Colors -->
+            <div class="field">
+              <label data-i18n="ed.palette">Suggested palettes</label>
+              <div class="palette-grid" id="paletteGrid"></div>
+            </div>
+
+            <div class="field colors">
+              <div><label for="f-bg" data-i18n="ed.bg">Background</label><input id="f-bg" type="color"></div>
+              <div id="bg2Wrap" hidden><label for="f-bg2" data-i18n="ed.bg2">Second</label><input id="f-bg2" type="color"></div>
+              <div><label for="f-fg" data-i18n="ed.fg">Text</label><input id="f-fg" type="color"></div>
+              <div><label for="f-accent" data-i18n="ed.accent">Accent</label><input id="f-accent" type="color"></div>
+            </div>
+
+            <hr class="divider">
+
+            <!-- Typography -->
+            <div class="field">
+              <label data-i18n="ed.font">Font</label>
+              <div class="seg seg-wrap" id="fontSeg">
+                <button type="button" data-font="serif" data-i18n="ed.f.serif">Classic</button>
+                <button type="button" data-font="sans" data-i18n="ed.f.sans">Modern</button>
+                <button type="button" data-font="display" data-i18n="ed.f.display">Display</button>
+                <button type="button" data-font="hand" data-i18n="ed.f.hand">Handwritten</button>
+                <button type="button" data-font="mono" data-i18n="ed.f.mono">Mono</button>
+              </div>
+            </div>
+            <div class="field">
+              <label data-i18n="ed.titleSize">Title size</label>
+              <div class="seg" id="titleSizeSeg">
+                <button type="button" data-titlesize="s" data-i18n="ed.sz.s">Small</button>
+                <button type="button" data-titlesize="m" data-i18n="ed.sz.m">Medium</button>
+                <button type="button" data-titlesize="l" data-i18n="ed.sz.l">Large</button>
+                <button type="button" data-titlesize="xl" data-i18n="ed.sz.xl">X-Large</button>
+              </div>
+            </div>
+
+            <!-- Effect -->
+            <div class="field">
+              <label data-i18n="ed.effect">Effect</label>
+              <div class="seg seg-wrap" id="effectSeg">
+                <button type="button" data-effect="none" data-i18n="ed.fx.none">None</button>
+                <button type="button" data-effect="confetti" data-i18n="ed.fx.confetti">Confetti</button>
+                <button type="button" data-effect="petals" data-i18n="ed.fx.petals">Petals</button>
+                <button type="button" data-effect="snow" data-i18n="ed.fx.snow">Snow</button>
+                <button type="button" data-effect="hearts" data-i18n="ed.fx.hearts">Hearts</button>
+                <button type="button" data-effect="bubbles" data-i18n="ed.fx.bubbles">Bubbles</button>
+                <button type="button" data-effect="sparkle" data-i18n="ed.fx.sparkle">Sparkle</button>
+                <button type="button" data-effect="bokeh" data-i18n="ed.fx.bokeh">Bokeh</button>
+                <button type="button" data-effect="leaves" data-i18n="ed.fx.leaves">Leaves</button>
+                <button type="button" data-effect="fireworks" data-i18n="ed.fx.fireworks">Fireworks</button>
+              </div>
+            </div>
+
+            <hr class="divider">
+
+            <!-- Layout & frame -->
+            <div class="field">
+              <label data-i18n="ed.layout">Layout</label>
+              <div class="seg" id="layoutSeg">
+                <button type="button" data-layout="top" data-i18n="ed.lay.top">Image top</button>
+                <button type="button" data-layout="full" data-i18n="ed.lay.full">Full bleed</button>
+                <button type="button" data-layout="none" data-i18n="ed.lay.none">No image</button>
+              </div>
+            </div>
+            <div class="field">
+              <label data-i18n="ed.frame">Frame</label>
+              <div class="seg seg-wrap" id="frameSeg">
+                <button type="button" data-frame="none" data-i18n="ed.fr.none">None</button>
+                <button type="button" data-frame="line" data-i18n="ed.fr.line">Line</button>
+                <button type="button" data-frame="double" data-i18n="ed.fr.double">Double</button>
+                <button type="button" data-frame="dashed" data-i18n="ed.fr.dashed">Dashed</button>
+                <button type="button" data-frame="inset" data-i18n="ed.fr.inset">Inset</button>
+              </div>
+            </div>
+            <div class="field">
+              <label data-i18n="ed.ratio">Ratio</label>
+              <div class="seg" id="ratioSeg">
+                <button type="button" data-ratio="portrait" data-i18n="ed.rt.portrait">Portrait</button>
+                <button type="button" data-ratio="landscape" data-i18n="ed.rt.landscape">Landscape</button>
+                <button type="button" data-ratio="square" data-i18n="ed.rt.square">Square</button>
+              </div>
+            </div>
+            <div class="field">
+              <label data-i18n="ed.radius">Corner radius</label>
+              <input id="f-radius" type="range" min="0" max="28" value="12">
+            </div>
+
+            <hr class="divider">
+
+            <!-- Image -->
+            <div class="field">
+              <label data-i18n="ed.image">Image (optional)</label>
+              <div class="upload">
+                <input id="f-image" type="file" accept="image/*" hidden>
+                <button type="button" class="btn btn-ghost" id="uploadBtn" data-i18n="ed.chooseImg">Choose image</button>
+                <button type="button" class="btn btn-ghost" id="removeImg" hidden data-i18n="ed.removeImg">Remove</button>
+                <span class="hint" id="imgHint" data-i18n="ed.imgHint">PNG/JPG, up to ~1.5MB</span>
+              </div>
+            </div>
+
+            <!-- Stickers -->
+            <div class="field">
+              <label data-i18n="ed.stickers">Stickers</label>
+              <div class="sticker-picker" id="stickerPicker"></div>
+              <span class="hint" data-i18n="ed.stickerHint">Tap to add, drag on the card to move.</span>
+            </div>
+
+            <!-- Extra text blocks (#6) -->
+            <div class="field">
+              <label data-i18n="ed.textBlocks">Extra text blocks</label>
+              <div class="upload">
+                <button type="button" class="btn btn-ghost" id="addTextBtn" data-i18n="ed.addText">Add text block</button>
+                <span class="hint" data-i18n="ed.textBlockHint">Add, then drag on the card; double-click to remove.</span>
+              </div>
+            </div>
+
+            <!-- Photo overlays -->
+            <div class="field">
+              <label data-i18n="ed.overlay">Photo stickers (movable)</label>
+              <div class="upload">
+                <input id="f-overlay" type="file" accept="image/*" hidden>
+                <button type="button" class="btn btn-ghost" id="overlayBtn" data-i18n="ed.addOverlay">Add photo</button>
+                <span class="hint" data-i18n="ed.overlayHint">Small images you can drag.</span>
+              </div>
+            </div>
+
+            <!-- GIF / Sticker search (KLIPY) -->
+            <div class="field">
+              <label data-i18n="ed.gif">GIF &amp; stickers</label>
+              <div class="seg" id="gifKindSeg" role="group" aria-label="Search kind">
+                <button type="button" data-kind="gif" class="active" data-i18n="ed.gif.gif">GIF</button>
+                <button type="button" data-kind="sticker" data-i18n="ed.gif.sticker">Sticker</button>
+              </div>
+              <div class="gif-search-row">
+                <input id="f-gif-q" type="text" maxlength="80" autocomplete="off" data-i18n-ph="ed.gif.ph" placeholder="Search GIFs…" aria-controls="gifResults">
+              </div>
+              <div class="gif-results" id="gifResults" role="listbox" aria-label="Results" hidden></div>
+              <p class="gif-attr" data-i18n="ed.gif.attr">Powered by KLIPY</p>
+              <span class="hint" data-i18n="ed.gif.hint">Tap a result to drop it on the card. Drag to move, double-click to remove.</span>
+            </div>
+
+            <!-- Drawing -->
+            <div class="field">
+              <label data-i18n="ed.draw">Draw on card</label>
+              <div class="draw-controls">
+                <button type="button" class="btn btn-ghost" id="drawToggle" data-i18n="ed.drawOn">Enable drawing</button>
+                <button type="button" class="btn btn-ghost" id="drawUndo" data-i18n="ed.undoDraw" disabled>Undo</button>
+                <button type="button" class="btn btn-ghost" id="drawClear" data-i18n="ed.clearDraw">Clear</button>
+              </div>
+              <div class="draw-tools" id="drawTools" hidden>
+                <div class="draw-tool-row">
+                  <div class="draw-mode-seg" id="drawModeSeg" role="group" aria-label="Tool">
+                    <button type="button" class="draw-mode active" data-mode="pen" data-i18n="ed.pen">Pen</button>
+                    <button type="button" class="draw-mode" data-mode="eraser" data-i18n="ed.eraser">Eraser</button>
+                  </div>
+                  <input id="f-brush" type="color" value="#9f2f2d" title="brush" class="brush-color">
+                </div>
+                <div class="draw-tool-row">
+                  <span class="draw-tool-label" data-i18n="ed.brushSize">Size</span>
+                  <input id="f-brush-size" class="draw-range" type="range" min="1" max="30" step="1" value="4">
+                  <span class="draw-size-val" id="brushSizeVal">4</span>
+                </div>
+                <div class="draw-tool-row">
+                  <span class="draw-tool-label" data-i18n="ed.brushStyle">Style</span>
+                  <div class="draw-style-seg" id="drawStyleSeg" role="group" aria-label="Brush style">
+                    <button type="button" class="draw-style active" data-style="smooth" data-i18n="ed.styleSmooth">Smooth</button>
+                    <button type="button" class="draw-style" data-style="marker" data-i18n="ed.styleMarker">Marker</button>
+                    <button type="button" class="draw-style" data-style="calligraphy" data-i18n="ed.styleCalligraphy">Calligraphy</button>
+                    <button type="button" class="draw-style" data-style="dotted" data-i18n="ed.styleDotted">Dotted</button>
+                  </div>
+                </div>
+                <div class="draw-swatches" id="drawSwatches" role="group" aria-label="Quick colors"></div>
+              </div>
+            </div>
+
+            <hr class="divider">
+
+            <!-- Music -->
+            <div class="field">
+              <label for="f-music" data-i18n="ed.music">Background music</label>
+              <input id="f-music" type="text" maxlength="300" data-i18n-ph="ed.musicPh">
+            </div>
+
+            <!-- Open at -->
+            <div class="field">
+              <label for="f-openat" data-i18n="ed.openAt">Open on a date</label>
+              <input id="f-openat" type="datetime-local">
+              <span class="hint" data-i18n="ed.openHint">Locked until this moment. Empty = open now.</span>
+            </div>
+
+            <div class="field">
+              <label data-i18n="ed.duration">Card lifetime</label>
+              <div class="seg" id="durationSeg">
+                <button type="button" data-days="1" data-i18n="ed.d1">1 day</button>
+                <button type="button" data-days="7" class="active" data-i18n="ed.d7">7 days</button>
+                <button type="button" data-days="30" data-i18n="ed.d30">30 days</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="check">
+                <input id="f-replies" type="checkbox" checked>
+                <span data-i18n="ed.replies">Let recipients leave a message</span>
+              </label>
+              <label class="check">
+                <input id="f-guestbook" type="checkbox">
+                <span data-i18n="ed.guestbook">Let recipients see each other's messages</span>
+              </label>
+              <label class="check">
+                <input id="f-reactions" type="checkbox" checked>
+                <span data-i18n="ed.reactions">Allow emoji reactions</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Preview -->
+          <div class="editor-preview reveal" style="transition-delay:.08s">
+            <div class="preview-sticky">
+              <div class="preview-stage" id="previewStage">
+                <div class="card-surface" id="previewCard"></div>
+                <canvas class="draw-canvas" id="drawCanvas" hidden></canvas>
+              </div>
+              <button class="btn btn-primary create-btn" id="createBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5L9 17.5L20 6.5"/></svg>
+                <span data-i18n="ed.create">Create card link</span>
+              </button>
+              <p class="hint center" data-i18n="ed.expiryNote">The link lasts 7 days from creation.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap foot-inner">
+      <a class="brand" href="/" style="font-size:1.15rem">
+        <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><path d="M4 8l8 5 8-5"/></svg></span>
+        Cards Maker
+      </a>
+      <span class="muted" data-i18n="foot.tag">Private cards · Self-expiring after 7 days</span>
+    </div>
+  </footer>
+
+  <!-- Modal -->
+  <div class="modal-backdrop" id="successModal" hidden>
+    <div class="modal card reveal">
+      <div class="modal-head">
+        <span class="tag tag-green" data-i18n="modal.badge">All set</span>
+        <h3 data-i18n="modal.h3">Your card is ready</h3>
+        <p class="muted" data-i18n="modal.p">Send the first link to the recipient.</p>
+      </div>
+      <div class="link-row">
+        <label data-i18n="modal.share">Link to share</label>
+        <div class="copy-field">
+          <input id="shareLink" readonly>
+          <button class="btn btn-ghost" data-copy="shareLink" data-i18n="modal.copy">Copy</button>
+        </div>
+      </div>
+      <div class="qr-row">
+        <div class="qr-box" id="qrBox" hidden></div>
+        <span class="hint" data-i18n="modal.qrHint">Scan to open the card quickly.</span>
+      </div>
+      <div class="link-row">
+        <label><span data-i18n="modal.manage">Management link</span> <span class="tag tag-yellow" data-i18n="modal.secret">Secret</span></label>
+        <div class="copy-field">
+          <input id="manageLink" readonly>
+          <button class="btn btn-ghost" data-copy="manageLink" data-i18n="modal.copy">Copy</button>
+        </div>
+        <span class="hint" data-i18n="modal.manageHint">Keep it to see views and replies.</span>
+      </div>
+      <div class="modal-actions">
+        <a id="openCard" class="btn btn-primary" target="_blank" rel="noopener" data-i18n="modal.open">Open card</a>
+        <button class="btn btn-ghost" id="closeModal" data-i18n="modal.another">Make another</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script type="module" src="/js/editor.js"></script>
+</body>
+</html>

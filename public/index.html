@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cards Maker — Make a private card, send it with one link</title>
+  <meta name="description" content="Cards Maker: make a card for family, friends or someone you love. Rich customization, a private link, self-expiring after 7 days.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Caveat:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap&subset=vietnamese" rel="stylesheet">
+  <script>
+    // Đặt theme trước khi vẽ để tránh nháy nền sáng.
+    (function () {
+      try {
+        var s = localStorage.getItem('cardmaker.theme');
+        var dark = s ? s === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/card.css">
+  <link rel="stylesheet" href="/css/editor.css">
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="/">
+        <span class="mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><path d="M4 8l8 5 8-5"/></svg>
+        </span>
+        Cards Maker
+      </a>
+      <div class="nav-links">
+        <a href="#how" data-i18n="nav.how">How it works</a>
+        <a href="#features" data-i18n="nav.features">Features</a>
+        <a href="#faq" data-i18n="nav.faq">FAQ</a>
+        <select class="lang-select" id="langSelect" aria-label="Language"></select>
+        <button type="button" class="theme-toggle" data-theme-toggle aria-label="Toggle theme"></button>
+        <a href="/create" class="btn btn-primary" data-i18n="nav.create">Create card</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="glow"></div>
+    <div class="wrap">
+      <div class="hero-grid">
+        <div class="reveal">
+          <span class="eyebrow" data-i18n="hero.badge">Digital cards · Private link · 7 days</span>
+          <h1 class="display" style="margin-top:18px" data-i18n-html="hero.title">One card, sent with <em>a single link</em>.</h1>
+          <p class="lead" data-i18n="hero.lead">Make a card for family, friends or someone you love in minutes.</p>
+          <div class="hero-cta">
+            <a href="/create" class="btn btn-primary">
+              <span data-i18n="hero.cta">Start designing</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+            <a href="#how" class="btn btn-ghost" data-i18n="hero.how">See how it works</a>
+          </div>
+          <div class="hero-meta">
+            <div class="stat"><div class="n" data-i18n="hero.stat1">7 days</div><div class="l" data-i18n="hero.stat1l">Each card lasts</div></div>
+            <div class="stat"><div class="n" data-i18n="hero.stat2">8 themes</div><div class="l" data-i18n="hero.stat2l">Ready templates</div></div>
+            <div class="stat"><div class="n" data-i18n="hero.stat3">5 languages</div><div class="l" data-i18n="hero.stat3l">Interface</div></div>
+          </div>
+        </div>
+        <div class="reveal" style="transition-delay:.08s">
+          <div class="hero-preview">
+            <div class="card-surface" id="heroCard" data-fixed-ratio="1" style="aspect-ratio:auto;height:100%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ============ HOW ============ -->
+    <section id="how" style="background:var(--surface-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="eyebrow" data-i18n="how.eyebrow">Three steps</span>
+          <h2 data-i18n="how.h2">From idea to a link</h2>
+        </div>
+        <div class="steps">
+          <div class="step reveal"><div class="num">01</div><h3 data-i18n="how.s1t">Design it</h3><p data-i18n="how.s1p">Pick a template, write your message, change colors and add an image.</p></div>
+          <div class="step reveal" style="transition-delay:.08s"><div class="num">02</div><h3 data-i18n="how.s2t">Get a private link</h3><p data-i18n="how.s2p">Hit create and you get a link to share and a secret management link.</p></div>
+          <div class="step reveal" style="transition-delay:.16s"><div class="num">03</div><h3 data-i18n="how.s3t">Send it</h3><p data-i18n="how.s3p">Share the link. Recipients open it to see the card and can reply.</p></div>
+        </div>
+        <div class="reveal" style="margin-top:36px;text-align:center">
+          <a href="/create" class="btn btn-primary" data-i18n="hero.cta">Start designing</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FEATURES ============ -->
+    <section id="features">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="eyebrow" data-i18n="ft.eyebrow">Features</span>
+          <h2 data-i18n="ft.h2">Refined, never cluttered</h2>
+        </div>
+        <div class="bento">
+          <div class="cell span-2 reveal">
+            <div class="ico" style="background:var(--blue-bg);color:var(--blue-fg)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></div>
+            <h3 data-i18n="ft.1t">A private link per card</h3><p data-i18n="ft.1p">Every card has a unique address.</p>
+          </div>
+          <div class="cell reveal" style="transition-delay:.06s">
+            <div class="ico" style="background:var(--yellow-bg);color:var(--yellow-fg)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+            <h3 data-i18n="ft.2t">Expires after 7 days</h3><p data-i18n="ft.2p">Cards delete themselves.</p>
+          </div>
+          <div class="cell reveal">
+            <div class="ico" style="background:var(--green-bg);color:var(--green-fg)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg></div>
+            <h3 data-i18n="ft.3t">View count</h3><p data-i18n="ft.3p">See how many times your card was opened.</p>
+          </div>
+          <div class="cell reveal" style="transition-delay:.06s">
+            <div class="ico" style="background:var(--red-bg);color:var(--red-fg)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <h3 data-i18n="ft.4t">Get replies</h3><p data-i18n="ft.4p">Recipients can send you a short note.</p>
+          </div>
+          <div class="cell reveal" style="transition-delay:.12s">
+            <div class="ico" style="background:var(--blue-bg);color:var(--blue-fg)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg></div>
+            <h3 data-i18n="ft.5t">Download as PNG</h3><p data-i18n="ft.5p">Recipients save the card as an image.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FAQ ============ -->
+    <section id="faq" style="background:var(--surface-2);border-top:1px solid var(--line)">
+      <div class="narrow">
+        <div class="section-head reveal">
+          <span class="eyebrow" data-i18n="faq.eyebrow">FAQ</span>
+          <h2 data-i18n="faq.h2">Things you might wonder</h2>
+        </div>
+        <div class="faq reveal">
+          <div class="faq-item"><button class="faq-q"><span data-i18n="faq.q1">Do I need an account?</span><span class="sign">+</span></button><div class="faq-a"><p data-i18n="faq.a1"></p></div></div>
+          <div class="faq-item"><button class="faq-q"><span data-i18n="faq.q2">What happens after 7 days?</span><span class="sign">+</span></button><div class="faq-a"><p data-i18n="faq.a2"></p></div></div>
+          <div class="faq-item"><button class="faq-q"><span data-i18n="faq.q3">Who can see my card?</span><span class="sign">+</span></button><div class="faq-a"><p data-i18n="faq.a3"></p></div></div>
+          <div class="faq-item"><button class="faq-q"><span data-i18n="faq.q4">Can I delete a card early?</span><span class="sign">+</span></button><div class="faq-a"><p data-i18n="faq.a4"></p></div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap foot-inner">
+      <a class="brand" href="/" style="font-size:1.15rem">
+        <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><path d="M4 8l8 5 8-5"/></svg></span>
+        Cards Maker
+      </a>
+      <span class="muted" data-i18n="foot.tag">Private cards · Self-expiring after 7 days</span>
+    </div>
+  </footer>
+
+  <script type="module" src="/js/landing.js"></script>
+</body>
+</html>

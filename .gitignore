@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Database (WAL mode tạo thêm -wal/-shm)
+cards.db
+cards.db-wal
+cards.db-shm
+*.db
+*.db-wal
+*.db-shm
+
+# Biến môi trường & bí mật (KLIPY_KEY, v.v.) — TUYỆT ĐỐI không commit
+.env
+.env.*
+!.env.example
+
+# Log & tạm
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
