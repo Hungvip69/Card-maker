@@ -19,6 +19,6 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm ci
-      # Chưa có test suite — kiểm tra mã nạp được (bắt lỗi cú pháp/import).
+      # No test suite yet — check the code parses (catches syntax/import errors).
       - run: node --check server.js
       - run: node --check db.js

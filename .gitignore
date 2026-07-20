@@ -1,7 +1,7 @@
 # Dependencies
 node_modules/
 
-# Database (WAL mode tạo thêm -wal/-shm)
+# Database (WAL mode also creates -wal/-shm)
 cards.db
 cards.db-wal
 cards.db-shm
@@ -9,18 +9,18 @@ cards.db-shm
 *.db-wal
 *.db-shm
 
-# Biến môi trường & bí mật (KLIPY_KEY, v.v.) — TUYỆT ĐỐI không commit
+# Environment & secrets (KLIPY_KEY, etc.) — NEVER commit
 .env
 .env.*
 !.env.example
 
-# Log & tạm
+# Logs & temp
 *.log
 npm-debug.log*
 .DS_Store
 Thumbs.db
 
-# File làm việc nội bộ (ghi chú, review, ý tưởng) — không đưa lên repo
+# Internal working files (notes, reviews, ideas) — keep out of the repo
 .d_*.txt
 _review_*.txt
 IDEA.md

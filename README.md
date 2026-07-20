@@ -4,40 +4,40 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%E2%89%A518-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 
-Tạo thiệp đẹp, chia sẻ qua link riêng, tự hết hạn sau 1/7/30 ngày.
+Create beautiful greeting cards, share them via a private link that auto-expires after 1/7/30 days.
 
-## Tính năng
+## Features
 
-- Trình tạo thiệp với template, màu, font, hiệu ứng, bố cục, khung
-- Sticker emoji, ảnh dán di chuyển được, khối chữ tự do, vẽ tay trên thiệp
-- Tìm GIF & sticker online qua KLIPY
-- Nhạc nền (YouTube/Spotify), hẹn giờ mở, sổ lưu bút, reaction emoji
-- Link quản lý bí mật: xem lượt xem, lời nhắn, gia hạn, sửa, xóa
-- Đa ngôn ngữ (vi/en/zh/ja/ko), sáng/tối
+- Card editor with templates, colors, fonts, effects, layouts, and frames
+- Emoji stickers, draggable image stickers, free text blocks, freehand drawing
+- Online GIF & sticker search via KLIPY
+- Background music (YouTube/Spotify), scheduled reveal, guestbook, emoji reactions
+- Secret management link: view counts, messages, extend, edit, delete
+- Multi-language (vi/en/zh/ja/ko), light/dark theme
 
-## Chạy
+## Run
 
-Cần Node 18+ (dùng `fetch` toàn cục).
+Requires Node 18+ (uses global `fetch`).
 
 ```bash
 npm install
 KLIPY_KEY=<key> npm start
 ```
 
-Mở http://localhost:3000/create
+Open http://localhost:3000/create
 
-## Biến môi trường
+## Environment variables
 
-Xem `.env.example`. `KLIPY_KEY` lấy free tại https://partner.klipy.com — thiếu key thì tính năng tìm GIF trả 503, phần còn lại vẫn chạy.
+See `.env.example`. Get a free `KLIPY_KEY` at https://partner.klipy.com — without it the GIF search returns 503, everything else still works.
 
-## Công nghệ
+## Tech
 
-Express · better-sqlite3 · nanoid · vanilla JS/CSS (không bundler)
+Express · better-sqlite3 · nanoid · vanilla JS/CSS (no bundler)
 
-## Đóng góp
+## Contributing
 
-Xem [CONTRIBUTING.md](CONTRIBUTING.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Giấy phép
+## License
 
-[MIT](LICENSE) — dùng tự do, chỉ cần giữ lại thông báo bản quyền.
+[MIT](LICENSE) — free to use, just keep the copyright notice.
