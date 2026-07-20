@@ -6,6 +6,7 @@
   <title>A card for you</title>
   <meta name="robots" content="noindex">
   <meta name="referrer" content="strict-origin-when-cross-origin">
+  <!--OG-->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Caveat:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap&subset=vietnamese" rel="stylesheet">
@@ -47,9 +48,22 @@
       <div class="music-slot" id="musicSlot" hidden></div>
 
       <div class="view-actions">
+        <button class="btn btn-ghost" id="speakBtn" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/></svg>
+          <span data-i18n="view.speak">Read aloud</span>
+        </button>
         <button class="btn btn-ghost" id="downloadBtn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
           <span data-i18n="view.download">Download image</span>
+        </button>
+        <select class="lang-select" id="dlScale" aria-label="Resolution">
+          <option value="1">1×</option>
+          <option value="2" selected>2×</option>
+          <option value="3">3×</option>
+        </select>
+        <button class="btn btn-ghost" id="shareViewBtn" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+          <span data-i18n="view.share">Share</span>
         </button>
         <a class="btn btn-primary" href="/" data-i18n="view.makeOwn">Make your own</a>
       </div>
@@ -107,7 +121,7 @@
     <a href="/" data-i18n-html="view.foot">Made with <strong>Cards</strong></a>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js" integrity="sha384-lELZMVO0WZSKHeOrm8rKLCq9ZXjY1+2I9uL/QyDxIXSd83b3/z5xBXb1uDoFi3P/" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script type="module">
     import { buildLangSwitcher } from '/js/i18n.js';
     import { initThemeToggle } from '/js/theme.js';

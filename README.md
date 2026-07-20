@@ -1,5 +1,9 @@
 # Cards Maker
 
+[![CI](https://github.com/Hungvip69/Card-maker/actions/workflows/ci.yml/badge.svg)](https://github.com/Hungvip69/Card-maker/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/Node-%E2%89%A518-339933?logo=node.js&logoColor=white)](https://nodejs.org)
+
 Tạo thiệp đẹp, chia sẻ qua link riêng, tự hết hạn sau 1/7/30 ngày.
 
 ## Tính năng
@@ -29,3 +33,11 @@ Xem `.env.example`. `KLIPY_KEY` lấy free tại https://partner.klipy.com — t
 ## Công nghệ
 
 Express · better-sqlite3 · nanoid · vanilla JS/CSS (không bundler)
+
+## Đóng góp
+
+Xem [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Giấy phép
+
+[MIT](LICENSE) — dùng tự do, chỉ cần giữ lại thông báo bản quyền.

@@ -19,6 +19,28 @@
   container-type: inline-size;
   background: #fbf3db;
 }
+.card-surface[data-texture="paper"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.28;
+  mix-blend-mode: multiply;
+  background-image:
+    radial-gradient(rgba(47,52,55,0.08) 0.6px, transparent 0.8px),
+    linear-gradient(90deg, rgba(255,255,255,0.24), transparent 36%, rgba(47,52,55,0.035));
+  background-size: 7px 7px, 100% 100%;
+}
+
+/* ---- Bóng đổ thẻ (data-shadow) ---- */
+.card-surface[data-shadow="none"] { box-shadow: none; }
+.card-surface[data-shadow="soft"] {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+.card-surface[data-shadow="lifted"] {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10), 0 18px 48px rgba(0, 0, 0, 0.16);
+}
 
 /* ---- Khung viền (data-frame) ---- */
 .card-surface .c-frame {
@@ -46,10 +68,12 @@
 .card-surface .c-image {
   position: relative; width: 100%; height: 46%;
   object-fit: cover; z-index: 1; flex-shrink: 0;
+  transform-origin: center;
 }
 .card-surface.layout-full .c-image-full {
   position: absolute; inset: 0; width: 100%; height: 100%;
   object-fit: cover; z-index: 0;
+  transform-origin: center;
 }
 .card-surface .c-scrim {
   position: absolute; inset: 0; z-index: 1; pointer-events: none;
@@ -111,8 +135,19 @@
 .card-surface .c-textblock {
   position: absolute; transform-origin: center;
   pointer-events: auto; cursor: grab;
-  user-select: none; white-space: pre; max-width: 80%;
+  user-select: none; white-space: pre-wrap; max-width: 80%;
   line-height: 1.2;
+}
+.card-surface .c-sticker.selected,
+.card-surface .c-overlay.selected,
+.card-surface .c-textblock.selected {
+  outline: 1px solid color-mix(in srgb, var(--c-accent) 82%, white);
+  outline-offset: 4px;
+}
+.card-surface .c-sticker.locked,
+.card-surface .c-overlay.locked,
+.card-surface .c-textblock.locked {
+  cursor: default !important;
 }
 .card-surface .c-textblock:focus { outline: none; }
 .card-surface .c-textblock.editing,

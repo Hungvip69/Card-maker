@@ -19,3 +19,10 @@ cards.db-shm
 npm-debug.log*
 .DS_Store
 Thumbs.db
+
+# File làm việc nội bộ (ghi chú, review, ý tưởng) — không đưa lên repo
+.d_*.txt
+_review_*.txt
+IDEA.md
+FEATURE_IDEAS.md
+FEATURE_LOG.md

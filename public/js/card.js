@@ -55,11 +55,18 @@ async function load() {
     document.getElementById('expiry').textContent = fmtExpiry(data.expiresAt);
     if (p.title) document.title = p.title;
     if (p.allowReplies !== false) document.getElementById('replyBox').hidden = false;
+    mountReplyCard(p);
     if (p.music) mountMusic(p.music);
     if (p.allowReactions !== false) mountReactions();
     if (p.guestbook === true) loadGuestbook();
 
     loading.hidden = true; content.hidden = false;
+    mountSpeak(p);
+    mountShare(p);
+    // Chuỗi mở: nếu có phong bì thì reveal/burst chạy SAU khi mở bao thư; nếu không thì chạy ngay.
+    const onOpen = () => { if (p.reveal) revealText(); if (p.burst) burstConfetti(p); };
+    if (p.envelope === true) mountEnvelope(p, onOpen);
+    else onOpen();
     fetch(`/api/cards/${encodeURIComponent(id)}/view`, { method: 'POST' }).catch(() => {});
   } catch {
     showError('view.gone.h', 'view.gone.p');
@@ -70,6 +77,154 @@ function fmtExpiry(expiresAt) {
   const ms = expiresAt - Date.now();
   if (ms <= 0) return '';
   return `${t('mn.left')} ${fmtDuration(ms)}`;
+}
+
+// ---------- Thiệp phản hồi ----------
+// Nút "Gửi thiệp đáp lại" mở /create với vai đảo ngược điền sẵn qua query param.
+// Editor đọc reply=1&to=&from= để prefill (tạo thiệp MỚI, không clone token cũ).
+function mountReplyCard(p) {
+  const box = document.getElementById('replyBox');
+  if (!box) return;
+  const btn = document.createElement('a');
+  btn.className = 'btn btn-ghost reply-card-btn';
+  btn.textContent = t('view.replyCard');
+  // người gửi thiệp gốc (p.sender) trở thành người NHẬN của thiệp đáp lại
+  const params = new URLSearchParams({ reply: '1' });
+  if (p.sender) params.set('to', p.sender);
+  if (p.recipient) params.set('from', p.recipient);
+  btn.href = `/create?${params.toString()}`;
+  box.appendChild(btn);
+}
+
+// ---------- Chia sẻ (Web Share API) ----------
+// Hiện nút Share nếu trình duyệt hỗ trợ navigator.share (mở share sheet gốc trên mobile).
+function mountShare(p) {
+  const btn = document.getElementById('shareViewBtn');
+  if (!btn || !navigator.share) return;
+  btn.hidden = false;
+  btn.addEventListener('click', () => {
+    navigator.share({ title: p.title || t('view.private'), url: location.href }).catch(() => {});
+  });
+}
+
+// ---------- Hé lộ chữ từng dòng (typewriter) ----------
+// Ẩn tiêu đề + lời nhắn, rồi hiện từng ký tự. Dùng textContent (KHÔNG innerHTML) nên
+// giữ nguyên escaping — không mở cửa XSS. Tôn trọng prefers-reduced-motion (hiện ngay).
+function revealText() {
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const nodes = [cardEl.querySelector('.c-title'), cardEl.querySelector('.c-message')].filter(Boolean);
+  if (!nodes.length) return;
+  if (reduce) return;   // giữ nguyên, không ẩn/hiện
+
+  let delay = 0;
+  for (const node of nodes) {
+    const full = node.textContent;
+    node.textContent = '';
+    for (const ch of full) {
+      const span = document.createElement('span');
+      span.textContent = ch;
+      span.style.opacity = '0';
+      span.style.transition = `opacity 0.25s ease ${delay}ms`;
+      node.appendChild(span);
+      // buộc reflow rồi bật hiện
+      requestAnimationFrame(() => { span.style.opacity = '1'; });
+      delay += ch === ' ' ? 12 : 26;
+    }
+    delay += 260;   // nghỉ giữa tiêu đề và lời nhắn
+  }
+}
+
+// ---------- Bắn confetti một lần khi mở ----------
+// Tái dùng .fx-piece + màu accent, animation fx-burst rồi tự dọn DOM.
+const BURST_COLORS = ['#9f2f2d', '#1f6c9f', '#346538', '#956400', '#b5651d', '#7b4f9a'];
+function burstConfetti(p) {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const wrap = document.querySelector('.view-card-wrap');
+  if (!wrap) return;
+  const layer = document.createElement('div');
+  layer.className = 'burst-layer'; layer.setAttribute('aria-hidden', 'true');
+  wrap.appendChild(layer);
+  const accent = /^#[0-9a-fA-F]{3,8}$/.test(p.accent || '') ? p.accent : '#956400';
+  const N = 40;
+  for (let i = 0; i < N; i++) {
+    const piece = document.createElement('span');
+    piece.className = 'burst-piece';
+    const angle = (Math.PI * 2 * i) / N + Math.random() * 0.3;
+    const dist = 60 + Math.random() * 120;
+    piece.style.setProperty('--bx', Math.cos(angle) * dist + 'px');
+    piece.style.setProperty('--by', Math.sin(angle) * dist + 'px');
+    piece.style.background = i % 3 === 0 ? accent : BURST_COLORS[i % BURST_COLORS.length];
+    piece.style.animationDelay = Math.random() * 0.08 + 's';
+    layer.appendChild(piece);
+  }
+  setTimeout(() => layer.remove(), 1600);
+}
+
+// ---------- Đọc thiệp (text-to-speech) ----------
+// Dùng Web Speech API (không cần server). Đọc tiêu đề + lời nhắn theo ngôn ngữ hiện tại.
+// Bấm lần nữa để dừng. Ẩn nút nếu trình duyệt không hỗ trợ.
+function mountSpeak(p) {
+  const btn = document.getElementById('speakBtn');
+  if (!btn) return;
+  const synth = window.speechSynthesis;
+  if (!synth || typeof SpeechSynthesisUtterance === 'undefined') return;
+
+  const text = [p.title, p.message, p.sender ? `— ${p.sender}` : '']
+    .map((s) => (s || '').trim()).filter(Boolean).join('. ');
+  if (!text) return;
+
+  const langMap = { vi: 'vi-VN', en: 'en-US', zh: 'zh-CN', ja: 'ja-JP', ko: 'ko-KR' };
+  btn.hidden = false;
+
+  const stop = () => { synth.cancel(); btn.classList.remove('speaking'); };
+  btn.addEventListener('click', () => {
+    if (synth.speaking) { stop(); return; }
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = langMap[getLang()] || 'en-US';
+    u.rate = 0.95;
+    u.onend = () => btn.classList.remove('speaking');
+    u.onerror = () => btn.classList.remove('speaking');
+    btn.classList.add('speaking');
+    synth.speak(u);
+  });
+  // dừng đọc khi rời trang
+  window.addEventListener('pagehide', stop);
+}
+
+// ---------- Mở kiểu phong bì (#7) ----------
+// Phủ một bao thư lên trước thiệp; người nhận chạm để mở nắp, bao thư trượt đi lộ thiệp.
+// Chỉ trang trí — nội dung thiệp đã có sẵn bên dưới, không phụ thuộc JS để đọc được.
+let envelopeMounted = false;
+function mountEnvelope(p, onOpen) {
+  if (envelopeMounted) return;
+  envelopeMounted = true;
+  const wrap = document.querySelector('.view-card-wrap');
+  if (!wrap) return;
+
+  const accent = /^#[0-9a-fA-F]{3,8}$/.test(p.accent || '') ? p.accent : '#956400';
+  const env = document.createElement('div');
+  env.className = 'envelope';
+  env.setAttribute('role', 'button');
+  env.setAttribute('tabindex', '0');
+  env.setAttribute('aria-label', t('view.envOpen'));
+  env.style.setProperty('--env-accent', accent);
+  env.innerHTML = `
+    <div class="env-body">
+      <div class="env-flap"></div>
+      <div class="env-heart">✉</div>
+      <div class="env-hint">${esc(t('view.envOpen'))}</div>
+    </div>`;
+  wrap.appendChild(env);
+
+  const open = () => {
+    if (env.classList.contains('opening')) return;
+    env.classList.add('opening');
+    // gỡ khỏi DOM sau khi animation trượt xong để không chặn tương tác thiệp
+    setTimeout(() => env.remove(), 1100);
+    if (typeof onOpen === 'function') setTimeout(onOpen, 500);   // reveal/burst sau khi nắp bật
+  };
+  env.addEventListener('click', open);
+  env.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
 }
 
 // ---------- Nhạc nền: nhúng an toàn YouTube/Spotify ----------
@@ -143,7 +298,9 @@ document.getElementById('downloadBtn').addEventListener('click', async (e) => {
   btn.disabled = true; btn.textContent = '…';
   try {
     cardEl.querySelectorAll('.fx-piece').forEach((p) => (p.style.animationPlayState = 'paused'));
-    const dataUrl = await window.htmlToImage.toPng(cardEl, { pixelRatio: 2, cacheBust: true });
+    const scaleSel = document.getElementById('dlScale');
+    const pixelRatio = Math.min(3, Math.max(1, Number(scaleSel?.value) || 2));
+    const dataUrl = await window.htmlToImage.toPng(cardEl, { pixelRatio, cacheBust: true });
     const a = document.createElement('a'); a.download = 'card.png'; a.href = dataUrl; a.click();
   } catch {
     toast(t('view.dlFail'));

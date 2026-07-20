@@ -9,13 +9,81 @@
 
 .view-card-wrap { position: relative; }
 .view-card-wrap .card-surface {
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.08);
   opacity: 0; transform: translateY(16px) scale(0.98);
   animation: card-in 0.8s var(--ease) forwards;
 }
 @keyframes card-in { to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
   .view-card-wrap .card-surface { animation: none; opacity: 1; transform: none; }
+}
+
+/* Confetti burst một lần khi mở */
+.burst-layer {
+  position: absolute; inset: 0; z-index: 15; pointer-events: none; overflow: visible;
+}
+.burst-piece {
+  position: absolute; top: 50%; left: 50%;
+  width: 9px; height: 9px; border-radius: 2px;
+  animation: burst-fly 1.2s cubic-bezier(0.15, 0.6, 0.3, 1) forwards;
+}
+@keyframes burst-fly {
+  0% { transform: translate(-50%, -50%) scale(0.4); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--bx)), calc(-50% + var(--by))) scale(1) rotate(280deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .burst-layer { display: none; } }
+
+/* Phong bì (#7): phủ lên .view-card-wrap, chạm để mở */
+.envelope {
+  position: absolute; inset: 0; z-index: 20; cursor: pointer;
+  display: grid; place-items: center;
+  perspective: 900px;
+}
+.env-body {
+  position: relative; width: 78%; aspect-ratio: 7 / 5;
+  background: var(--env-accent, #956400);
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+/* thân bao thư: hai nếp gấp chéo bằng gradient */
+.env-body::before {
+  content: ''; position: absolute; inset: 0;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.10) 0 50%, transparent 50%),
+    linear-gradient(-135deg, rgba(0,0,0,0.12) 0 50%, transparent 50%);
+}
+.env-flap {
+  position: absolute; top: 0; left: 0; right: 0; height: 56%;
+  background: color-mix(in srgb, var(--env-accent, #956400) 82%, #000 18%);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  transform-origin: top center;
+  transition: transform 0.5s var(--ease);
+  z-index: 3;
+}
+.env-heart {
+  position: absolute; top: 54%; left: 50%; transform: translate(-50%, -50%);
+  font-size: 1.8rem; color: #fff; z-index: 2;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3));
+}
+.env-hint {
+  position: absolute; bottom: 8%; left: 0; right: 0; text-align: center;
+  color: rgba(255,255,255,0.92); font-size: 0.82rem; z-index: 4;
+  animation: env-pulse 1.8s ease-in-out infinite;
+}
+@keyframes env-pulse { 0%, 100% { opacity: 0.65; } 50% { opacity: 1; } }
+
+/* mở: nắp bật lên, cả bao thư trượt xuống & mờ dần */
+.envelope.opening .env-flap { transform: rotateX(-165deg); }
+.envelope.opening {
+  animation: env-away 0.7s 0.35s var(--ease) forwards;
+  pointer-events: none;
+}
+@keyframes env-away {
+  to { transform: translateY(30%) scale(0.94); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .envelope.opening { animation: none; opacity: 0; transition: opacity 0.3s; }
+  .envelope.opening .env-flap { transition: none; }
 }
 
 .view-meta {
@@ -27,6 +95,11 @@
 
 .view-actions { display: flex; gap: 10px; margin-top: 16px; }
 .view-actions .btn { flex: 1; justify-content: center; }
+.view-actions .btn[hidden] { display: none; }
+#speakBtn.speaking { color: var(--green-fg); border-color: var(--green-fg); }
+#speakBtn.speaking svg { animation: speak-pulse 0.9s ease-in-out infinite; }
+@keyframes speak-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { #speakBtn.speaking svg { animation: none; } }
 
 /* Thanh thả cảm xúc (#11) */
 .react-bar { margin-top: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -83,6 +156,7 @@
   text-align: center; padding: 8px 0; color: var(--green-fg);
   font-size: 0.92rem; display: flex; align-items: center; justify-content: center; gap: 8px;
 }
+.reply-card-btn { width: 100%; justify-content: center; margin-top: 12px; }
 
 /* Loading / error states */
 .state-screen {

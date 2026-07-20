@@ -50,6 +50,23 @@
         <div class="editor">
           <!-- Controls -->
           <div class="editor-controls reveal">
+            <div class="design-studio">
+              <div class="studio-head">
+                <span class="eyebrow" data-i18n="ed.designTools">Design tools</span>
+                <div class="history-actions">
+                  <button type="button" class="mini-btn" id="designUndo" title="Undo" data-i18n-title="ed.undo" data-i18n="ed.undo">Undo</button>
+                  <button type="button" class="mini-btn" id="designRedo" title="Redo" data-i18n-title="ed.redo" data-i18n="ed.redo">Redo</button>
+                </div>
+              </div>
+              <div class="preset-grid" id="designPresetGrid"></div>
+              <div class="template-save-row">
+                <button type="button" class="btn btn-ghost" id="designSaveTpl" data-i18n="ed.saveTemplate">Save as template</button>
+                <select id="savedTemplateSelect" class="tool-select" aria-label="Saved templates">
+                  <option value="" data-i18n="ed.savedTemplates">Saved templates</option>
+                </select>
+              </div>
+            </div>
+
             <div class="field">
               <label data-i18n="ed.template">Pick a template</label>
               <div class="template-grid" id="templateGrid"></div>
@@ -69,6 +86,24 @@
               <label for="f-message" data-i18n="ed.message">Message</label>
               <textarea id="f-message" rows="4" maxlength="2000" data-i18n-ph="ed.messagePh"></textarea>
               <span class="hint"><span id="msgCount">0</span>/2000</span>
+            </div>
+
+            <!-- Gợi ý lời chúc bằng AI -->
+            <div class="field ai-suggest">
+              <input id="aiNotes" type="text" maxlength="200" data-i18n-ph="ai.notesPh" placeholder="Notes for the AI (optional)">
+              <div class="ai-row">
+                <select id="aiTone" class="tool-select" aria-label="Tone">
+                  <option value="warm" data-i18n="ai.tone.warm">Warm</option>
+                  <option value="funny" data-i18n="ai.tone.funny">Funny</option>
+                  <option value="formal" data-i18n="ai.tone.formal">Formal</option>
+                  <option value="heartfelt" data-i18n="ai.tone.heartfelt">Heartfelt</option>
+                  <option value="short" data-i18n="ai.tone.short">Short</option>
+                </select>
+                <button type="button" class="btn btn-ghost" id="aiSuggestBtn" data-i18n="ai.suggest">Suggest with AI</button>
+                <button type="button" class="btn btn-ghost" id="aiRegenBtn" hidden data-i18n="ai.regen">Another</button>
+                <button type="button" class="btn btn-ghost" id="aiPolishBtn" data-i18n="ai.polish">Polish</button>
+              </div>
+              <span class="hint" data-i18n="ai.hint">AI drafts a title and message from the template and tone.</span>
             </div>
             <div class="field">
               <label for="f-sender" data-i18n="ed.sender">Signed</label>
@@ -98,6 +133,17 @@
             <div class="field cond" id="angleField" hidden>
               <label data-i18n="ed.angle">Gradient angle</label>
               <input id="f-angle" type="range" min="0" max="360" value="135">
+            </div>
+            <div class="field cond" id="patternAdvanced" hidden>
+              <label data-i18n="ed.patternDetail">Pattern detail</label>
+              <div class="tool-grid two">
+                <label class="range-field"><span data-i18n="ed.scale">Scale</span><input id="f-pattern-scale" type="range" min="0.5" max="3" step="0.1" value="1"></label>
+                <label class="range-field"><span data-i18n="ed.opacity">Opacity</span><input id="f-pattern-opacity" type="range" min="0.04" max="0.6" step="0.02" value="0.18"></label>
+              </div>
+              <label class="check">
+                <input id="f-texture" type="checkbox">
+                <span data-i18n="ed.paperTexture">Paper texture</span>
+              </label>
             </div>
 
             <!-- Colors -->
@@ -133,6 +179,14 @@
                 <button type="button" data-titlesize="m" data-i18n="ed.sz.m">Medium</button>
                 <button type="button" data-titlesize="l" data-i18n="ed.sz.l">Large</button>
                 <button type="button" data-titlesize="xl" data-i18n="ed.sz.xl">X-Large</button>
+              </div>
+            </div>
+            <div class="field">
+              <label data-i18n="ed.cardSize">Card size</label>
+              <div class="seg" id="sizeSeg">
+                <button type="button" data-size="s" data-i18n="ed.sz.s">Small</button>
+                <button type="button" data-size="m" data-i18n="ed.sz.m">Medium</button>
+                <button type="button" data-size="l" data-i18n="ed.sz.l">Large</button>
               </div>
             </div>
 
@@ -175,6 +229,14 @@
               </div>
             </div>
             <div class="field">
+              <label data-i18n="ed.shadow">Shadow</label>
+              <div class="seg" id="shadowSeg">
+                <button type="button" data-shadow="none" data-i18n="ed.sh.none">None</button>
+                <button type="button" data-shadow="soft" data-i18n="ed.sh.soft">Soft</button>
+                <button type="button" data-shadow="lifted" data-i18n="ed.sh.lifted">Lifted</button>
+              </div>
+            </div>
+            <div class="field">
               <label data-i18n="ed.ratio">Ratio</label>
               <div class="seg" id="ratioSeg">
                 <button type="button" data-ratio="portrait" data-i18n="ed.rt.portrait">Portrait</button>
@@ -185,6 +247,12 @@
             <div class="field">
               <label data-i18n="ed.radius">Corner radius</label>
               <input id="f-radius" type="range" min="0" max="28" value="12">
+            </div>
+            <div class="field">
+              <label class="check">
+                <input id="f-snap" type="checkbox" checked>
+                <span data-i18n="ed.snap">Snap objects to center and edges</span>
+              </label>
             </div>
 
             <hr class="divider">
@@ -198,6 +266,25 @@
                 <button type="button" class="btn btn-ghost" id="removeImg" hidden data-i18n="ed.removeImg">Remove</button>
                 <span class="hint" id="imgHint" data-i18n="ed.imgHint">PNG/JPG, up to ~1.5MB</span>
               </div>
+            </div>
+            <div class="field">
+              <label data-i18n="ed.imageTools">Image tools</label>
+              <div class="tool-grid two">
+                <label class="range-field"><span data-i18n="ed.zoom">Zoom</span><input id="f-image-zoom" type="range" min="1" max="2.5" step="0.05" value="1"></label>
+                <label class="range-field"><span data-i18n="ed.horizontal">Horizontal</span><input id="f-image-x" type="range" min="0" max="100" step="1" value="50"></label>
+                <label class="range-field"><span data-i18n="ed.vertical">Vertical</span><input id="f-image-y" type="range" min="0" max="100" step="1" value="50"></label>
+                <label class="range-field"><span data-i18n="ed.opacity">Opacity</span><input id="f-image-opacity" type="range" min="0.1" max="1" step="0.05" value="1"></label>
+                <label class="range-field"><span data-i18n="ed.imageRadius">Image radius</span><input id="f-image-radius" type="range" min="0" max="28" step="1" value="0"></label>
+                <label class="range-field"><span data-i18n="ed.scrim">Scrim</span><input id="f-scrim" type="range" min="0" max="0.8" step="0.05" value="0.45"></label>
+              </div>
+              <div class="seg seg-wrap" id="imageFilterSeg">
+                <button type="button" data-filter="none" class="active" data-i18n="ed.filter.clean">Clean</button>
+                <button type="button" data-filter="warm" data-i18n="ed.filter.warm">Warm</button>
+                <button type="button" data-filter="cool" data-i18n="ed.filter.cool">Cool</button>
+                <button type="button" data-filter="mono" data-i18n="ed.filter.mono">Mono</button>
+                <button type="button" data-filter="fade" data-i18n="ed.filter.fade">Fade</button>
+              </div>
+              <button type="button" class="btn btn-ghost" id="extractPaletteBtn" data-i18n="ed.extractPalette">Use colors from image</button>
             </div>
 
             <!-- Stickers -->
@@ -213,6 +300,57 @@
               <div class="upload">
                 <button type="button" class="btn btn-ghost" id="addTextBtn" data-i18n="ed.addText">Add text block</button>
                 <span class="hint" data-i18n="ed.textBlockHint">Add, then drag on the card; double-click to remove.</span>
+              </div>
+            </div>
+            <div class="field selected-tools" id="selectedTools">
+              <label data-i18n="ed.selectedItem">Selected item</label>
+              <div class="selected-empty" id="selectedEmpty" data-i18n="ed.selectedEmpty">Select text, sticker, or photo on the card.</div>
+              <div class="selected-panel" id="selectedPanel" hidden>
+                <div class="tool-grid two">
+                  <label class="range-field" id="selScaleWrap"><span data-i18n="ed.scale">Scale</span><input id="sel-scale" type="range" min="0.1" max="6" step="0.05" value="1"></label>
+                  <label class="range-field" id="selSizeWrap" hidden><span data-i18n="ed.size">Size</span><input id="sel-size" type="range" min="8" max="64" step="1" value="22"></label>
+                  <label class="range-field"><span data-i18n="ed.rotate">Rotate</span><input id="sel-rot" type="range" min="-180" max="180" step="1" value="0"></label>
+                  <label class="range-field"><span data-i18n="ed.opacity">Opacity</span><input id="sel-opacity" type="range" min="0.05" max="1" step="0.05" value="1"></label>
+                </div>
+                <div class="text-style-panel" id="textStylePanel" hidden>
+                  <div class="tool-grid two">
+                    <label><span data-i18n="ed.textColor">Text</span><input id="sel-text-color" type="color" value="#2f3437"></label>
+                    <label><span data-i18n="ed.fill">Fill</span><input id="sel-text-bg" type="color" value="#ffffff"></label>
+                  </div>
+                  <div class="seg seg-wrap" id="selFontSeg">
+                    <button type="button" data-font="" data-i18n="ed.fontCard">Card font</button>
+                    <button type="button" data-font="serif" data-i18n="ed.fontSerif">Serif</button>
+                    <button type="button" data-font="sans" data-i18n="ed.fontSans">Sans</button>
+                    <button type="button" data-font="display" data-i18n="ed.fontDisplay">Display</button>
+                    <button type="button" data-font="hand" data-i18n="ed.fontHand">Hand</button>
+                    <button type="button" data-font="mono" data-i18n="ed.f.mono">Mono</button>
+                  </div>
+                  <div class="seg seg-wrap" id="selTextStyleSeg">
+                    <button type="button" data-style="bold" data-i18n="ed.bold">Bold</button>
+                    <button type="button" data-style="italic" data-i18n="ed.italic">Italic</button>
+                    <button type="button" data-style="shadow" data-i18n="ed.shadow">Shadow</button>
+                    <button type="button" data-style="outline" data-i18n="ed.outline">Outline</button>
+                    <button type="button" data-style="bg" data-i18n="ed.fillToggle">Fill on/off</button>
+                  </div>
+                  <div class="seg" id="selAlignSeg">
+                    <button type="button" data-align="left" data-i18n="ed.align.left">Left</button>
+                    <button type="button" data-align="center" data-i18n="ed.align.center">Center</button>
+                    <button type="button" data-align="right" data-i18n="ed.align.right">Right</button>
+                  </div>
+                </div>
+                <div class="overlay-style-panel" id="overlayStylePanel" hidden>
+                  <label class="check">
+                    <input id="sel-round" type="checkbox">
+                    <span data-i18n="ed.roundImage">Round image</span>
+                  </label>
+                  <div class="seg seg-wrap" id="selOverlayFilterSeg">
+                    <button type="button" data-filter="none" data-i18n="ed.filter.clean">Clean</button>
+                    <button type="button" data-filter="warm" data-i18n="ed.filter.warm">Warm</button>
+                    <button type="button" data-filter="cool" data-i18n="ed.filter.cool">Cool</button>
+                    <button type="button" data-filter="mono" data-i18n="ed.filter.mono">Mono</button>
+                    <button type="button" data-filter="fade" data-i18n="ed.filter.fade">Fade</button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -312,6 +450,18 @@
                 <input id="f-reactions" type="checkbox" checked>
                 <span data-i18n="ed.reactions">Allow emoji reactions</span>
               </label>
+              <label class="check">
+                <input id="f-envelope" type="checkbox">
+                <span data-i18n="ed.envelope">Envelope open</span>
+              </label>
+              <label class="check">
+                <input id="f-reveal" type="checkbox">
+                <span data-i18n="ed.reveal">Reveal text line by line</span>
+              </label>
+              <label class="check">
+                <input id="f-burst" type="checkbox">
+                <span data-i18n="ed.burst">Confetti burst on open</span>
+              </label>
             </div>
           </div>
 
@@ -321,6 +471,36 @@
               <div class="preview-stage" id="previewStage">
                 <div class="card-surface" id="previewCard"></div>
                 <canvas class="draw-canvas" id="drawCanvas" hidden></canvas>
+                <div class="snap-guide guide-x" id="guideX" hidden></div>
+                <div class="snap-guide guide-y" id="guideY" hidden></div>
+                <div class="selection-toolbar" id="selectionToolbar" hidden>
+                  <button type="button" data-action="duplicate" title="Duplicate" data-i18n-title="ed.action.copy" data-i18n="ed.action.copy">Copy</button>
+                  <button type="button" data-action="delete" title="Delete" data-i18n-title="ed.action.delete" data-i18n="ed.action.delete">Delete</button>
+                  <button type="button" data-action="front" title="Bring forward" data-i18n-title="ed.action.front" data-i18n="ed.action.front">Forward</button>
+                  <button type="button" data-action="back" title="Send backward" data-i18n-title="ed.action.back" data-i18n="ed.action.back">Back</button>
+                  <button type="button" data-action="centerX" title="Center horizontally" data-i18n-title="ed.action.centerX" data-i18n="ed.action.centerX">Center X</button>
+                  <button type="button" data-action="centerY" title="Center vertically" data-i18n-title="ed.action.centerY" data-i18n="ed.action.centerY">Center Y</button>
+                  <button type="button" data-action="flipX" title="Flip horizontal" data-i18n-title="ed.action.flipX" data-i18n="ed.action.flipX">Flip H</button>
+                  <button type="button" data-action="flipY" title="Flip vertical" data-i18n-title="ed.action.flipY" data-i18n="ed.action.flipY">Flip V</button>
+                  <button type="button" data-action="lock" title="Lock" data-i18n-title="ed.action.lock" data-i18n="ed.action.lock">Lock</button>
+                  <button type="button" data-action="hide" title="Hide" data-i18n-title="ed.action.hide" data-i18n="ed.action.hide">Hide</button>
+                </div>
+              </div>
+              <div class="preview-panels">
+                <div class="layer-panel">
+                  <div class="panel-head">
+                    <span class="eyebrow" data-i18n="ed.layers">Layers</span>
+                    <button type="button" class="mini-btn" id="clearSelectionBtn" data-i18n="ed.clearSelection">Clear</button>
+                  </div>
+                  <div class="layer-list" id="layerList"></div>
+                </div>
+                <div class="legibility-panel" id="legibilityPanel">
+                  <div class="panel-head">
+                    <span class="eyebrow" data-i18n="ed.check">Check</span>
+                    <button type="button" class="mini-btn" id="autoFixBtn" data-i18n="ed.autoFix">Auto fix</button>
+                  </div>
+                  <div class="check-list" id="checkList"></div>
+                </div>
               </div>
               <button class="btn btn-primary create-btn" id="createBtn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5L9 17.5L20 6.5"/></svg>
@@ -373,12 +553,13 @@
       </div>
       <div class="modal-actions">
         <a id="openCard" class="btn btn-primary" target="_blank" rel="noopener" data-i18n="modal.open">Open card</a>
+        <button class="btn btn-ghost" id="shareBtn" hidden data-i18n="modal.share2">Share</button>
         <button class="btn btn-ghost" id="closeModal" data-i18n="modal.another">Make another</button>
       </div>
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script type="module" src="/js/editor.js"></script>
 </body>
 </html>

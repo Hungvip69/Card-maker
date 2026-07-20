@@ -15,7 +15,11 @@ db.exec(`
     payload     TEXT NOT NULL,
     views       INTEGER NOT NULL DEFAULT 0,
     created_at  INTEGER NOT NULL,
-    expires_at  INTEGER NOT NULL
+    expires_at  INTEGER NOT NULL,
+    open_at     INTEGER NOT NULL DEFAULT 0,
+    allow_reactions INTEGER NOT NULL DEFAULT 1,
+    allow_replies   INTEGER NOT NULL DEFAULT 1,
+    guestbook       INTEGER NOT NULL DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS messages (
@@ -39,6 +43,20 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_messages_card ON messages(card_id);
   CREATE INDEX IF NOT EXISTS idx_reactions_card ON reactions(card_id);
 `);
+
+try {
+  // Migration nhẹ: thêm cột meta cho DB đã tồn tại (bỏ qua nếu đã có).
+  db.exec(`ALTER TABLE cards ADD COLUMN open_at INTEGER NOT NULL DEFAULT 0`);
+} catch {}
+try {
+  db.exec(`ALTER TABLE cards ADD COLUMN allow_reactions INTEGER NOT NULL DEFAULT 1`);
+} catch {}
+try {
+  db.exec(`ALTER TABLE cards ADD COLUMN allow_replies INTEGER NOT NULL DEFAULT 1`);
+} catch {}
+try {
+  db.exec(`ALTER TABLE cards ADD COLUMN guestbook INTEGER NOT NULL DEFAULT 0`);
+} catch {}
 
 /** Xóa các thiệp đã quá hạn (và lời nhắn liên quan qua ON DELETE CASCADE). */
 export function purgeExpired() {

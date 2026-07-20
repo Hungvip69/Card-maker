@@ -4,7 +4,7 @@ import { initThemeToggle } from '/js/theme.js';
 
 const $ = (s) => document.querySelector(s);
 
-let state = defaultsFor('birthday');
+let state = localizedDefaultsFor('birthday');
 const touched = new Set();
 // Token quản lý khi vào /create?edit=<token> — đặt ở đây để dòng dữ liệu rõ ràng;
 // chỉ được gán trong maybeLoadExisting() ở cuối file (chế độ sửa, không phải clone).
@@ -17,28 +17,77 @@ const els = {
   recipient: $('#f-recipient'), title: $('#f-title'), message: $('#f-message'), sender: $('#f-sender'),
   bg: $('#f-bg'), bg2: $('#f-bg2'), fg: $('#f-fg'), accent: $('#f-accent'),
   angle: $('#f-angle'), radius: $('#f-radius'),
+  patternScale: $('#f-pattern-scale'), patternOpacity: $('#f-pattern-opacity'), texture: $('#f-texture'),
+  snap: $('#f-snap'),
+  imageZoom: $('#f-image-zoom'), imageX: $('#f-image-x'), imageY: $('#f-image-y'),
+  imageOpacity: $('#f-image-opacity'), imageRadius: $('#f-image-radius'), scrim: $('#f-scrim'),
+  imageFilterSeg: $('#imageFilterSeg'), extractPalette: $('#extractPaletteBtn'),
   image: $('#f-image'), overlay: $('#f-overlay'), music: $('#f-music'), openat: $('#f-openat'),
   brush: $('#f-brush'), replies: $('#f-replies'),
-  guestbook: $('#f-guestbook'), reactions: $('#f-reactions'),
+  guestbook: $('#f-guestbook'), reactions: $('#f-reactions'), envelope: $('#f-envelope'),
+  reveal: $('#f-reveal'), burst: $('#f-burst'),
   msgCount: $('#msgCount'), preview: $('#previewCard'), hero: $('#heroCard'),
   imgHint: $('#imgHint'), removeImg: $('#removeImg'), createBtn: $('#createBtn'),
   canvas: $('#drawCanvas'), stage: $('#previewStage'),
+  guideX: $('#guideX'), guideY: $('#guideY'), selectionToolbar: $('#selectionToolbar'),
+  layerList: $('#layerList'), checkList: $('#checkList'), autoFix: $('#autoFixBtn'),
+  clearSelection: $('#clearSelectionBtn'), undo: $('#designUndo'), redo: $('#designRedo'),
+  presetGrid: $('#designPresetGrid'), saveTemplate: $('#designSaveTpl'), savedTemplates: $('#savedTemplateSelect'),
+  selectedEmpty: $('#selectedEmpty'), selectedPanel: $('#selectedPanel'),
+  selScale: $('#sel-scale'), selSize: $('#sel-size'), selRot: $('#sel-rot'), selOpacity: $('#sel-opacity'),
+  selScaleWrap: $('#selScaleWrap'), selSizeWrap: $('#selSizeWrap'),
+  textStylePanel: $('#textStylePanel'), overlayStylePanel: $('#overlayStylePanel'),
+  selTextColor: $('#sel-text-color'), selTextBg: $('#sel-text-bg'),
+  selFontSeg: $('#selFontSeg'), selTextStyleSeg: $('#selTextStyleSeg'), selAlignSeg: $('#selAlignSeg'),
+  selRound: $('#sel-round'), selOverlayFilterSeg: $('#selOverlayFilterSeg'),
   drawTools: $('#drawTools'), drawUndo: $('#drawUndo'),
   drawModeSeg: $('#drawModeSeg'), drawStyleSeg: $('#drawStyleSeg'),
   drawSwatches: $('#drawSwatches'),
   brushSize: $('#f-brush-size'), brushSizeVal: $('#brushSizeVal'),
+  aiSuggest: $('#aiSuggestBtn'), aiTone: $('#aiTone'), aiRegen: $('#aiRegenBtn'), aiNotes: $('#aiNotes'), aiPolish: $('#aiPolishBtn'),
 };
+
+const DESIGN_PRESETS = [
+  { key: 'editorial', name: 'Editorial', bg: '#fbfbfa', bg2: '#f7f6f3', fg: '#2f3437', accent: '#787774', font: 'serif', frame: 'line', effect: 'none', bgStyle: 'solid', titleSize: 'l' },
+  { key: 'softLove', name: 'Soft love', bg: '#fdebec', bg2: '#f7cdd0', fg: '#3a2326', accent: '#9f2f2d', font: 'serif', frame: 'double', effect: 'hearts', bgStyle: 'gradient', titleSize: 'xl' },
+  { key: 'freshNote', name: 'Fresh note', bg: '#edf3ec', bg2: '#d3e6d2', fg: '#26302a', accent: '#346538', font: 'sans', frame: 'inset', effect: 'petals', bgStyle: 'pattern', pattern: 'paper', titleSize: 'm' },
+  { key: 'quietBlue', name: 'Quiet blue', bg: '#e1f3fe', bg2: '#bfe3fb', fg: '#1f3340', accent: '#1f6c9f', font: 'display', frame: 'line', effect: 'sparkle', bgStyle: 'gradient', titleSize: 'l' },
+  { key: 'warmFormal', name: 'Warm formal', bg: '#fbf3db', bg2: '#f6e3b0', fg: '#2f3437', accent: '#956400', font: 'display', frame: 'double', effect: 'none', bgStyle: 'pattern', pattern: 'grid', titleSize: 'xl' },
+  { key: 'mono', name: 'Mono', bg: '#ffffff', bg2: '#f1f1ef', fg: '#2f3437', accent: '#787774', font: 'sans', frame: 'none', effect: 'none', bgStyle: 'solid', titleSize: 'm' },
+];
+const SAVED_TEMPLATES_KEY = 'cardmaker.designTemplates';
+const HISTORY_LIMIT = 80;
+let selected = null;
+let selectedTextBlock = null;
+let drag = null;
+let isRestoringHistory = false;
+const historyStack = [];
+const redoStack = [];
+
+function localizedDefaultsFor(template) {
+  const d = defaultsFor(template);
+  const titleKey = `default.${template}.title`;
+  const messageKey = `default.${template}.message`;
+  const title = t(titleKey);
+  const message = t(messageKey);
+  return {
+    ...d,
+    title: title === titleKey ? d.title : title,
+    message: message === messageKey ? d.message : message,
+  };
+}
 
 // ---------- Render preview ----------
 let rafId = 0;
 function draw() {
   cancelAnimationFrame(rafId);
-  // Re-render thay toàn bộ node; chỉ số khối chữ đang chọn không còn ý nghĩa -> bỏ chọn.
-  selectedTextBlock = null;
+  // Re-render the card and then re-attach editor-only interactions.
   rafId = requestAnimationFrame(() => {
+    ensureDesignState();
     state.recipientLabel = t('to');
     renderCard(els.preview, state);
     attachInteractions();
+    syncDesignPanels();
   });
 }
 
@@ -49,17 +98,145 @@ function toColor(v) {
   return '#000000';
 }
 
+function toDatetimeLocalValue(ts) {
+  const d = new Date(Number(ts) || 0);
+  if (!Number.isFinite(d.getTime()) || d.getTime() <= 0) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// Bỏ recipientLabel (chỉ dùng cho preview) khỏi payload gửi đi / snapshot history.
+function cloneState(value = state) {
+  const { recipientLabel, ...payload } = value;
+  return payload;
+}
+
+function ensureDesignState() {
+  state.patternScale ??= 1;
+  state.patternOpacity ??= 0.18;
+  state.texture ??= false;
+  state.imageZoom ??= 1;
+  state.imageX ??= 50;
+  state.imageY ??= 50;
+  state.imageRadius ??= 0;
+  state.imageOpacity ??= 1;
+  state.imageFilter ??= 'none';
+  state.scrim ??= 0.45;
+  state.snap ??= true;
+  state.guestbook ??= false;
+  state.allowReactions ??= true;
+  state.stickers ??= [];
+  state.overlays ??= [];
+  state.textBlocks ??= [];
+  let z = 10;
+  state.stickers.forEach((item) => {
+    item.opacity ??= 1; item.z ??= z; item.hidden ??= false; item.locked ??= false;
+    item.flipX ??= false; item.flipY ??= false; z += 10;
+  });
+  state.overlays.forEach((item) => {
+    item.opacity ??= 1; item.filter ??= 'none'; item.z ??= z; item.hidden ??= false; item.locked ??= false;
+    item.flipX ??= false; item.flipY ??= false; z += 10;
+  });
+  state.textBlocks.forEach((item) => {
+    item.opacity ??= 1; item.bg ??= ''; item.font ??= ''; item.align ??= 'center';
+    item.weight ??= 'normal'; item.italic ??= false; item.shadow ??= false; item.outline ??= false;
+    item.z ??= z; item.hidden ??= false; item.locked ??= false; z += 10;
+  });
+}
+
+function selectedItem() {
+  if (!selected) return null;
+  const arr = selected.type === 'text' ? state.textBlocks : selected.type === 'sticker' ? state.stickers : state.overlays;
+  const item = arr?.[selected.i];
+  return item ? { arr, item, type: selected.type, i: selected.i } : null;
+}
+
+function setSelected(type, i) {
+  selected = type ? { type, i } : null;
+  selectedTextBlock = type === 'text' ? i : null;
+  syncDesignPanels();
+}
+
+function maxZ() {
+  return Math.max(0, ...state.stickers.map((x) => x.z || 0), ...state.overlays.map((x) => x.z || 0), ...state.textBlocks.map((x) => x.z || 0));
+}
+
+function nextZ() {
+  return maxZ() + 10;
+}
+
+function setActiveButtons(root, attr, val) {
+  if (!root) return;
+  root.querySelectorAll('button').forEach((b) => b.classList.toggle('active', String(b.dataset[attr]) === String(val)));
+}
+
+// Undo/redo dùng snapshot đầy đủ (chứa cả base64) để undo đúng cả khi đổi ảnh/drawing.
+//
+// QUAN TRỌNG: snapshotHistory() được gọi từ listener CAPTURE-phase (chạy TRƯỚC handler
+// bubble-phase mutate state), nên `state` lúc này vẫn là trạng thái TRƯỚC thay đổi. Ta
+// commit ngay (leading-edge), KHÔNG debounce trì hoãn — nếu trì hoãn 400ms thì snap chụp
+// phải state SAU khi đã sửa, khiến undo đầu tiên không hoàn tác được.
+//
+// Chống phình: một burst (gõ liên tục / kéo slider) chỉ đẩy 1 bản pre-change đầu tiên;
+// các event trong 400ms kế bị bỏ qua bằng cờ thời gian. pushSnapshot dedup theo nội dung.
+let lastSnapAt = 0;
+function pushSnapshot() {
+  const snap = JSON.stringify(cloneState());
+  if (historyStack[historyStack.length - 1] !== snap) {
+    historyStack.push(snap);
+    if (historyStack.length > HISTORY_LIMIT) historyStack.shift();
+  }
+  redoStack.length = 0;
+  updateHistoryButtons();
+}
+function snapshotHistory() {
+  if (isRestoringHistory) return;
+  const now = performance.now();
+  if (now - lastSnapAt < 400) { lastSnapAt = now; return; } // trong burst → bỏ qua
+  lastSnapAt = now;
+  pushSnapshot();   // chụp state PRE-change (đang ở capture-phase)
+}
+
+// Commit ngay tức thì (dùng cho các hành động rời rạc: xóa, duplicate, front/back).
+// Reset cửa sổ burst để lần snapshot kế (nếu có) không bị bỏ qua nhầm.
+function snapshotHistoryNow() {
+  if (isRestoringHistory) return;
+  lastSnapAt = performance.now();
+  pushSnapshot();
+}
+
+function restoreHistorySnapshot(snap) {
+  isRestoringHistory = true;
+  const parsed = JSON.parse(snap);
+  state = { ...defaultsFor(parsed.template || 'birthday'), ...parsed };
+  selected = null;
+  selectedTextBlock = null;
+  ensureDesignState();
+  Object.keys(state).forEach((k) => touched.add(k));
+  syncInputsFromState();
+  markTemplate(state.template);
+  draw();
+  isRestoringHistory = false;
+}
+
+function updateHistoryButtons() {
+  if (els.undo) els.undo.disabled = historyStack.length === 0;
+  if (els.redo) els.redo.disabled = redoStack.length === 0;
+}
+
 function setActive(scope, attr, val) {
   document.querySelectorAll(`${scope} button`).forEach((b) => b.classList.toggle('active', b.dataset[attr] === val));
 }
 
 function syncConditional() {
   $('#patternField').hidden = state.bgStyle !== 'pattern';
+  $('#patternAdvanced').hidden = state.bgStyle !== 'pattern';
   $('#angleField').hidden = state.bgStyle !== 'gradient';
   $('#bg2Wrap').hidden = state.bgStyle === 'solid';
 }
 
 function syncInputsFromState() {
+  ensureDesignState();
   els.title.value = state.title;
   els.message.value = state.message;
   els.recipient.value = touched.has('recipient') ? state.recipient : '';
@@ -70,17 +247,36 @@ function syncInputsFromState() {
   els.accent.value = toColor(state.accent);
   els.angle.value = state.gradientAngle;
   els.radius.value = state.radius;
+  els.patternScale.value = state.patternScale;
+  els.patternOpacity.value = state.patternOpacity;
+  els.texture.checked = state.texture === true;
+  els.snap.checked = state.snap !== false;
+  els.imageZoom.value = state.imageZoom;
+  els.imageX.value = state.imageX;
+  els.imageY.value = state.imageY;
+  els.imageOpacity.value = state.imageOpacity;
+  els.imageRadius.value = state.imageRadius;
+  els.scrim.value = state.scrim;
   els.music.value = state.music || '';
+  els.openat.value = toDatetimeLocalValue(state.openAt);
   els.replies.checked = state.allowReplies !== false;
+  els.guestbook.checked = state.guestbook === true;
+  els.reactions.checked = state.allowReactions !== false;
+  els.envelope.checked = state.envelope === true;
+  els.reveal.checked = state.reveal === true;
+  els.burst.checked = state.burst === true;
   els.msgCount.textContent = String(state.message.length);
   setActive('#bgStyleSeg', 'bgstyle', state.bgStyle);
   setActive('#patternSeg', 'pattern', state.pattern);
   setActive('#fontSeg', 'font', state.font);
   setActive('#titleSizeSeg', 'titlesize', state.titleSize);
+  setActive('#sizeSeg', 'size', state.size || 'm');
   setActive('#effectSeg', 'effect', state.effect);
   setActive('#layoutSeg', 'layout', state.layout);
   setActive('#frameSeg', 'frame', state.frame);
+  setActive('#shadowSeg', 'shadow', state.shadow || 'soft');
   setActive('#ratioSeg', 'ratio', state.ratio);
+  setActiveButtons(els.imageFilterSeg, 'filter', state.imageFilter);
   syncConditional();
 }
 
@@ -103,7 +299,7 @@ function markTemplate(key) {
 }
 
 function applyTemplate(key) {
-  const d = defaultsFor(key);
+  const d = localizedDefaultsFor(key);
   state.template = key;
   const carry = ['title', 'message', 'bg', 'bg2', 'fg', 'accent', 'font', 'effect'];
   for (const k of carry) if (!touched.has(k)) state[k] = d[k];
@@ -128,6 +324,16 @@ function bindColor(el, key) {
 
 els.angle.addEventListener('input', () => { state.gradientAngle = +els.angle.value; draw(); });
 els.radius.addEventListener('input', () => { state.radius = +els.radius.value; draw(); });
+els.patternScale.addEventListener('input', () => { state.patternScale = +els.patternScale.value; draw(); });
+els.patternOpacity.addEventListener('input', () => { state.patternOpacity = +els.patternOpacity.value; draw(); });
+els.texture.addEventListener('change', () => { state.texture = els.texture.checked; draw(); });
+els.snap.addEventListener('change', () => { state.snap = els.snap.checked; });
+[
+  ['imageZoom', 'imageZoom'], ['imageX', 'imageX'], ['imageY', 'imageY'],
+  ['imageOpacity', 'imageOpacity'], ['imageRadius', 'imageRadius'], ['scrim', 'scrim'],
+].forEach(([elKey, stateKey]) => {
+  els[elKey].addEventListener('input', () => { state[stateKey] = +els[elKey].value; draw(); });
+});
 els.music.addEventListener('input', () => { state.music = els.music.value; });
 els.openat.addEventListener('input', () => {
   state.openAt = els.openat.value ? new Date(els.openat.value).getTime() : 0;
@@ -135,6 +341,16 @@ els.openat.addEventListener('input', () => {
 els.replies.addEventListener('change', () => { state.allowReplies = els.replies.checked; });
 els.guestbook.addEventListener('change', () => { state.guestbook = els.guestbook.checked; });
 els.reactions.addEventListener('change', () => { state.allowReactions = els.reactions.checked; });
+els.envelope.addEventListener('change', () => { state.envelope = els.envelope.checked; });
+els.reveal.addEventListener('change', () => { state.reveal = els.reveal.checked; });
+els.burst.addEventListener('change', () => { state.burst = els.burst.checked; });
+
+els.imageFilterSeg.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.imageFilter = b.dataset.filter || 'none';
+  setActiveButtons(els.imageFilterSeg, 'filter', state.imageFilter);
+  draw();
+});
 
 // Thời hạn thiệp (1/7/30 ngày) — gửi riêng khi tạo, không nằm trong payload.
 let selectedDays = 7;
@@ -158,9 +374,11 @@ bindSeg('#bgStyleSeg', 'bgstyle', 'bgStyle', syncConditional);
 bindSeg('#patternSeg', 'pattern', 'pattern');
 bindSeg('#fontSeg', 'font', 'font');
 bindSeg('#titleSizeSeg', 'titlesize', 'titleSize');
+bindSeg('#sizeSeg', 'size', 'size');
 bindSeg('#effectSeg', 'effect', 'effect');
 bindSeg('#layoutSeg', 'layout', 'layout');
 bindSeg('#frameSeg', 'frame', 'frame');
+bindSeg('#shadowSeg', 'shadow', 'shadow');
 bindSeg('#ratioSeg', 'ratio', 'ratio', resizeCanvas);
 
 // ---------- Main image ----------
@@ -190,7 +408,8 @@ function buildStickerPicker() {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'sticker-btn'; b.textContent = char;
     b.addEventListener('click', () => {
-      state.stickers.push({ char, x: 50, y: 42, scale: 1, rot: 0 });
+      state.stickers.push({ char, x: 50, y: 42, scale: 1, rot: 0, opacity: 1, z: nextZ(), hidden: false, locked: false });
+      setSelected('sticker', state.stickers.length - 1);
       draw();
     });
     wrap.appendChild(b);
@@ -202,7 +421,8 @@ function buildStickerPicker() {
 // rồi vào sửa tại chỗ ngay để người dùng gõ luôn. Double-rAF: draw() tự defer 1 rAF,
 // nên đợi thêm 1 frame nữa mới chắc node .c-textblock đã có trong DOM.
 function addTextBlock() {
-  state.textBlocks.push({ text: t('ed.textPh') || 'Your text', x: 50, y: 58, size: 22, color: '', rot: 0 });
+  state.textBlocks.push({ text: t('ed.textPh') || 'Your text', x: 50, y: 58, size: 22, color: '', bg: '', font: '', align: 'center', weight: 'normal', italic: false, shadow: false, outline: false, opacity: 1, rot: 0, z: nextZ(), hidden: false, locked: false });
+  setSelected('text', state.textBlocks.length - 1);
   draw();
   const i = state.textBlocks.length - 1;
   requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -242,7 +462,8 @@ els.overlay.addEventListener('change', () => {
   if (file.size > 800_000) { toast(t('ed.imgTooBig')); els.overlay.value = ''; return; }
   const reader = new FileReader();
   reader.onload = () => {
-    state.overlays.push({ src: reader.result, x: 50, y: 50, scale: 1, rot: 0, round: false });
+    state.overlays.push({ src: reader.result, x: 50, y: 50, scale: 1, rot: 0, opacity: 1, filter: 'none', z: nextZ(), hidden: false, locked: false, round: false });
+    setSelected('overlay', state.overlays.length - 1);
     els.overlay.value = ''; draw();
   };
   reader.readAsDataURL(file);
@@ -283,7 +504,8 @@ function gifClear() {
 function addRemoteOverlay(url) {
   if (!url) return;
   if (state.overlays.length >= GIF_OVERLAY_CAP) { toast(t('ed.overlayFull')); return; }
-  state.overlays.push({ src: url, x: 50, y: 50, scale: 1, rot: 0, round: false });
+  state.overlays.push({ src: url, x: 50, y: 50, scale: 1, rot: 0, opacity: 1, filter: 'none', z: nextZ(), hidden: false, locked: false, round: false });
+  setSelected('overlay', state.overlays.length - 1);
   draw();
 }
 
@@ -362,29 +584,415 @@ gifEls.input.addEventListener('keydown', (e) => {
 // Một nguồn duy nhất ánh xạ node -> mảng state + chỉ số. Sticker & overlay dùng
 // data-i; khối chữ dùng data-ti. Nhờ vậy logic kéo/xóa chung cho cả ba loại mà
 // không phá đường cũ của sticker/overlay (trả về đúng {arr,i} như trước).
-function resolveItem(node) {
-  if (node.classList.contains('c-sticker')) return { arr: state.stickers, i: +node.dataset.i, type: 'sticker' };
-  if (node.classList.contains('c-textblock')) return { arr: state.textBlocks, i: +node.dataset.ti, type: 'text' };
-  return { arr: state.overlays, i: +node.dataset.i, type: 'overlay' };
+function buildDesignPresets() {
+  if (!els.presetGrid) return;
+  els.presetGrid.innerHTML = '';
+  DESIGN_PRESETS.forEach((preset) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'preset-btn';
+    b.innerHTML = `<span class="preset-swatch" style="background:${preset.bg};border-color:${preset.accent}"></span><span>${gifEsc(t(`preset.${preset.key}`) || preset.name)}</span>`;
+    b.addEventListener('click', () => {
+      Object.assign(state, preset);
+      ['bg', 'bg2', 'fg', 'accent', 'font', 'frame', 'effect', 'bgStyle', 'pattern', 'titleSize'].forEach((k) => touched.add(k));
+      syncInputsFromState();
+      draw();
+    });
+    els.presetGrid.appendChild(b);
+  });
 }
 
-let selectedTextBlock = null; // chỉ số khối chữ đang chọn (để xóa bằng phím Delete)
+function savedTemplates() {
+  try { return JSON.parse(localStorage.getItem(SAVED_TEMPLATES_KEY) || '[]'); } catch { return []; }
+}
+
+// Template lưu trọn payload (kể base64) — dễ vượt quota localStorage. Nếu đầy,
+// bỏ template cũ nhất cho đến khi lưu được; vẫn trượt thì báo lỗi ra toast.
+function writeSavedTemplates(list) {
+  let capped = list.slice(0, 24);
+  for (;;) {
+    const json = JSON.stringify(capped);
+    try { localStorage.setItem(SAVED_TEMPLATES_KEY, json); renderSavedTemplates(); return true; }
+    catch {
+      if (capped.length <= 1) { toast(t('ed.imgTooBig')); return false; }   // fallback thông báo
+      capped = capped.slice(0, capped.length - 1);  // bỏ cũ nhất, thử lại
+    }
+  }
+}
+
+function renderSavedTemplates() {
+  if (!els.savedTemplates) return;
+  const list = savedTemplates();
+  els.savedTemplates.innerHTML = `<option value="">${gifEsc(t('ed.savedTemplates'))}</option>` + list.map((item, i) => `<option value="${i}">${gifEsc(item.name)}</option>`).join('');
+}
+
+els.saveTemplate?.addEventListener('click', () => {
+  const name = prompt(t('ed.templateName'), state.title || t('ed.myCardDesign'));
+  if (!name) return;
+  const list = savedTemplates();
+  list.unshift({ name: name.trim().slice(0, 40), savedAt: Date.now(), payload: cloneState() });
+  writeSavedTemplates(list);
+  toast(t('ed.templateSaved'));
+});
+
+els.savedTemplates?.addEventListener('change', () => {
+  const i = Number(els.savedTemplates.value);
+  const item = savedTemplates()[i];
+  if (!item) return;
+  state = { ...defaultsFor(item.payload.template || 'birthday'), ...item.payload };
+  selected = null;
+  selectedTextBlock = null;
+  ensureDesignState();
+  Object.keys(state).forEach((k) => touched.add(k));
+  syncInputsFromState();
+  markTemplate(state.template);
+  draw();
+  els.savedTemplates.value = '';
+});
+
+els.undo?.addEventListener('click', () => {
+  if (!historyStack.length) return;
+  redoStack.push(JSON.stringify(cloneState()));
+  restoreHistorySnapshot(historyStack.pop());
+  updateHistoryButtons();
+});
+
+els.redo?.addEventListener('click', () => {
+  if (!redoStack.length) return;
+  historyStack.push(JSON.stringify(cloneState()));
+  restoreHistorySnapshot(redoStack.pop());
+  updateHistoryButtons();
+});
+
+function shouldCaptureHistory(e) {
+  const target = e.target;
+  if (isRestoringHistory) return false;
+  if (target.closest('#successModal, .nav, #gifResults, #f-gif-q')) return false;
+  if (target.closest('#designUndo, #designRedo, #clearSelectionBtn')) return false;
+  if (target.closest('.layer-row') && !target.closest('[data-layer-action]')) return false;
+  return Boolean(target.closest('.editor-controls, .preview-stage'));
+}
+
+['input', 'change', 'click', 'pointerdown', 'keydown'].forEach((eventName) => {
+  document.addEventListener(eventName, (e) => {
+    if (!shouldCaptureHistory(e)) return;
+    snapshotHistory();
+  }, true);
+});
+
+function layerEntries() {
+  const entries = [];
+  state.textBlocks.forEach((item, i) => entries.push({ type: 'text', i, item, label: item.text || t('ed.layerText') }));
+  state.overlays.forEach((item, i) => entries.push({ type: 'overlay', i, item, label: item.src?.startsWith('https:') ? t('ed.layerGif') : t('ed.layerPhoto') }));
+  state.stickers.forEach((item, i) => entries.push({ type: 'sticker', i, item, label: item.char || t('ed.layerSticker') }));
+  return entries.sort((a, b) => (b.item.z || 0) - (a.item.z || 0));
+}
+
+function renderLayers() {
+  if (!els.layerList) return;
+  const entries = layerEntries();
+  if (!entries.length) {
+    els.layerList.innerHTML = `<div class="layer-empty">${gifEsc(t('ed.layerEmpty'))}</div>`;
+    return;
+  }
+  els.layerList.innerHTML = entries.map((entry) => {
+    const active = selected?.type === entry.type && selected?.i === entry.i ? ' active' : '';
+    const muted = entry.item.hidden ? ' muted' : '';
+    return `
+      <div class="layer-row${active}${muted}" data-type="${entry.type}" data-i="${entry.i}">
+        <button type="button" class="layer-main">
+          <span class="layer-kind">${gifEsc(t(`ed.kind.${entry.type}`))}</span>
+          <span class="layer-name">${gifEsc(entry.label.slice(0, 40))}</span>
+        </button>
+        <button type="button" data-layer-action="hide">${entry.item.hidden ? gifEsc(t('ed.layerShow')) : gifEsc(t('ed.layerHide'))}</button>
+        <button type="button" data-layer-action="lock">${entry.item.locked ? gifEsc(t('ed.layerUnlock')) : gifEsc(t('ed.layerLock'))}</button>
+      </div>`;
+  }).join('');
+}
+
+els.layerList?.addEventListener('click', (e) => {
+  const row = e.target.closest('.layer-row');
+  if (!row) return;
+  const type = row.dataset.type;
+  const i = Number(row.dataset.i);
+  const action = e.target.closest('[data-layer-action]')?.dataset.layerAction;
+  setSelected(type, i);
+  const it = selectedItem();
+  if (!it) return;
+  if (action === 'hide') it.item.hidden = !it.item.hidden;
+  if (action === 'lock') it.item.locked = !it.item.locked;
+  if (action) draw();
+});
+
+function renderLegibility() {
+  if (!els.checkList) return;
+  const issues = [];
+  if ((state.title || '').length > 70 && state.titleSize === 'xl') issues.push(t('check.titleLong'));
+  if ((state.message || '').length > 700) issues.push(t('check.messageDense'));
+  if (state.layout === 'full' && state.image && (state.scrim || 0) < 0.3) issues.push(t('check.scrim'));
+  const contrast = contrastRatio(state.fg || '#2f3437', state.bg || '#ffffff');
+  if (contrast && contrast < 4.5 && state.layout !== 'full') issues.push(t('check.contrast'));
+  if (!issues.length) issues.push(t('check.ok'));
+  els.checkList.innerHTML = issues.map((x) => `<div class="check-item">${gifEsc(x)}</div>`).join('');
+}
+
+function luminance(hex) {
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex || '')) return null;
+  const rgb = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map((v) => v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+  return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+}
+
+function contrastRatio(a, b) {
+  const la = luminance(a), lb = luminance(b);
+  if (la == null || lb == null) return null;
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+els.autoFix?.addEventListener('click', () => {
+  if ((state.title || '').length > 70) state.titleSize = 'm';
+  if (state.layout === 'full' && state.image) state.scrim = Math.max(state.scrim || 0, 0.45);
+  if (contrastRatio(state.fg || '#2f3437', state.bg || '#ffffff') < 4.5) {
+    state.fg = '#2f3437';
+    state.accent = state.accent || '#787774';
+  }
+  syncInputsFromState();
+  draw();
+});
+
+function syncDesignPanels() {
+  const it = selectedItem();
+  if (selected && !it) selected = null;
+  renderLayers();
+  renderLegibility();
+  updateHistoryButtons();
+  syncSelectionUi();
+  els.preview.querySelectorAll('.c-sticker, .c-overlay, .c-textblock').forEach((node) => {
+    const resolved = resolveItem(node);
+    node.classList.toggle('selected', Boolean(selected && selected.type === resolved.type && selected.i === resolved.i));
+    node.classList.toggle('locked', Boolean(resolved.item?.locked));
+  });
+}
+
+function syncSelectionUi() {
+  const it = selectedItem();
+  if (!it) {
+    if (els.selectionToolbar) els.selectionToolbar.hidden = true;
+    if (els.selectedEmpty) els.selectedEmpty.hidden = false;
+    if (els.selectedPanel) els.selectedPanel.hidden = true;
+    return;
+  }
+  if (els.selectionToolbar) els.selectionToolbar.hidden = false;
+  if (els.selectedEmpty) els.selectedEmpty.hidden = true;
+  if (els.selectedPanel) els.selectedPanel.hidden = false;
+  const item = it.item;
+  els.selRot.value = item.rot ?? 0;
+  els.selOpacity.value = item.opacity ?? 1;
+  const isText = it.type === 'text';
+  els.selScaleWrap.hidden = isText;
+  els.selSizeWrap.hidden = !isText;
+  if (isText) els.selSize.value = item.size ?? 22;
+  else els.selScale.value = item.scale ?? 1;
+  els.textStylePanel.hidden = !isText;
+  els.overlayStylePanel.hidden = it.type !== 'overlay';
+  if (isText) {
+    els.selTextColor.value = toColor(item.color || state.fg);
+    els.selTextBg.value = toColor(item.bg || '#ffffff');
+    setActiveButtons(els.selFontSeg, 'font', item.font || '');
+    setActiveButtons(els.selAlignSeg, 'align', item.align || 'center');
+    els.selTextStyleSeg.querySelector('[data-style="bold"]')?.classList.toggle('active', item.weight === 'bold');
+    els.selTextStyleSeg.querySelector('[data-style="italic"]')?.classList.toggle('active', item.italic === true);
+    els.selTextStyleSeg.querySelector('[data-style="shadow"]')?.classList.toggle('active', item.shadow === true);
+    els.selTextStyleSeg.querySelector('[data-style="outline"]')?.classList.toggle('active', item.outline === true);
+    els.selTextStyleSeg.querySelector('[data-style="bg"]')?.classList.toggle('active', Boolean(item.bg));
+  }
+  if (it.type === 'overlay') {
+    els.selRound.checked = item.round === true;
+    setActiveButtons(els.selOverlayFilterSeg, 'filter', item.filter || 'none');
+  }
+}
+
+function mutateSelected(fn) {
+  const it = selectedItem();
+  if (!it) return;
+  fn(it.item, it);
+  draw();
+}
+
+els.selectionToolbar?.addEventListener('click', (e) => {
+  const action = e.target.closest('button')?.dataset.action;
+  if (!action) return;
+  const it = selectedItem();
+  if (!it) return;
+  if (action === 'delete') {
+    it.arr.splice(it.i, 1);
+    setSelected(null, null);
+  } else if (action === 'duplicate') {
+    const copy = { ...JSON.parse(JSON.stringify(it.item)), x: Math.min(100, (it.item.x || 50) + 5), y: Math.min(100, (it.item.y || 50) + 5), z: nextZ(), locked: false, hidden: false };
+    it.arr.push(copy);
+    setSelected(it.type, it.arr.length - 1);
+  } else if (action === 'front') {
+    it.item.z = nextZ();
+  } else if (action === 'back') {
+    it.item.z = Math.max(0, Math.min(...layerEntries().map((x) => x.item.z || 0)) - 10);
+  } else if (action === 'centerX') {
+    it.item.x = 50;
+  } else if (action === 'centerY') {
+    it.item.y = 50;
+  } else if (action === 'flipX') {
+    it.item.flipX = !it.item.flipX;
+  } else if (action === 'flipY') {
+    it.item.flipY = !it.item.flipY;
+  } else if (action === 'lock') {
+    it.item.locked = !it.item.locked;
+  } else if (action === 'hide') {
+    it.item.hidden = !it.item.hidden;
+  }
+  draw();
+});
+
+els.clearSelection?.addEventListener('click', () => setSelected(null, null));
+
+els.selScale?.addEventListener('input', () => mutateSelected((item) => { item.scale = +els.selScale.value; }));
+els.selSize?.addEventListener('input', () => mutateSelected((item) => { item.size = +els.selSize.value; }));
+els.selRot?.addEventListener('input', () => mutateSelected((item) => { item.rot = +els.selRot.value; }));
+els.selOpacity?.addEventListener('input', () => mutateSelected((item) => { item.opacity = +els.selOpacity.value; }));
+els.selTextColor?.addEventListener('input', () => mutateSelected((item) => { item.color = els.selTextColor.value; }));
+els.selTextBg?.addEventListener('input', () => mutateSelected((item) => { item.bg = els.selTextBg.value; }));
+els.selRound?.addEventListener('change', () => mutateSelected((item) => { item.round = els.selRound.checked; }));
+els.selFontSeg?.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  mutateSelected((item) => { item.font = b.dataset.font || ''; });
+});
+els.selAlignSeg?.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  mutateSelected((item) => { item.align = b.dataset.align || 'center'; });
+});
+els.selTextStyleSeg?.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  mutateSelected((item) => {
+    const s = b.dataset.style;
+    if (s === 'bold') item.weight = item.weight === 'bold' ? 'normal' : 'bold';
+    if (s === 'italic') item.italic = !item.italic;
+    if (s === 'shadow') item.shadow = !item.shadow;
+    if (s === 'outline') item.outline = !item.outline;
+    if (s === 'bg') item.bg = item.bg ? '' : els.selTextBg.value;
+  });
+});
+els.selOverlayFilterSeg?.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  mutateSelected((item) => { item.filter = b.dataset.filter || 'none'; });
+});
+
+function applyPaletteFromImage() {
+  if (!state.image) { toast(t('ed.needImageFirst')); return; }
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas');
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    c.width = 32; c.height = 32;
+    ctx.drawImage(img, 0, 0, 32, 32);
+    const data = ctx.getImageData(0, 0, 32, 32).data;
+    let r = 0, g = 0, b = 0, n = 0;
+    for (let j = 0; j < data.length; j += 16) { r += data[j]; g += data[j + 1]; b += data[j + 2]; n++; }
+    const avg = [r / n, g / n, b / n];
+    const toHex = (v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0');
+    const hex = (arr) => '#' + arr.map(toHex).join('');
+    state.bg = hex(avg.map((v) => v + (255 - v) * 0.76));
+    state.bg2 = hex(avg.map((v) => v + (255 - v) * 0.55));
+    state.accent = hex(avg.map((v) => v * 0.62));
+    state.fg = '#2f3437';
+    ['bg', 'bg2', 'fg', 'accent'].forEach((k) => touched.add(k));
+    syncInputsFromState();
+    draw();
+  };
+  img.onerror = () => toast(t('ed.paletteReadFail'));
+  img.src = state.image;
+}
+
+els.extractPalette?.addEventListener('click', applyPaletteFromImage);
+
+// ---------- Gợi ý lời chúc bằng AI ----------
+// Gọi /api/suggest (server giấu key Claude), điền title + message. Coi là "đã chỉnh"
+// để template không ghi đè. Nếu chưa cấu hình (503) báo nhẹ + ẩn nút.
+// Nút "Another" (regen) gọi lại cùng hàm — giữ nguyên occasion/tone/notes để ra biến thể mới.
+// mode='polish' gửi title/message hiện có để AI trau chuốt (giữ ý), không sinh mới.
+async function runSuggest(mode = 'generate') {
+  if (mode === 'polish' && !state.title?.trim() && !state.message?.trim()) {
+    toast(t('ai.needText')); return;
+  }
+  const btn = mode === 'polish' ? els.aiPolish : els.aiSuggest;
+  if (!btn) return;
+  const orig = btn.textContent;
+  btn.disabled = true; if (els.aiRegen) els.aiRegen.disabled = true;
+  btn.textContent = t('ai.working');
+  try {
+    const res = await fetch('/api/suggest', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode,
+        occasion: state.template || 'plain',
+        recipient: state.recipient || '',
+        tone: els.aiTone?.value || 'warm',
+        lang: getLang(),
+        notes: (els.aiNotes?.value || '').trim(),
+        title: state.title || '',
+        message: state.message || '',
+      }),
+    });
+    const data = await res.json();
+    if (res.status === 503) {
+      toast(t('ai.unconfigured'));
+      if (els.aiSuggest) els.aiSuggest.hidden = true;
+      if (els.aiRegen) els.aiRegen.hidden = true;
+      if (els.aiPolish) els.aiPolish.hidden = true;
+      return;
+    }
+    if (!res.ok) throw new Error(data.error || t('ai.fail'));
+    if (data.title) { state.title = data.title; touched.add('title'); }
+    if (data.message) { state.message = data.message; touched.add('message'); }
+    syncInputsFromState();
+    draw();
+    if (els.aiRegen) els.aiRegen.hidden = false;   // đã có 1 lần -> cho tạo biến thể khác
+    toast(t('ai.done'));
+  } catch (err) {
+    toast(err.message || t('ai.fail'));
+  } finally {
+    btn.disabled = false; if (els.aiRegen) els.aiRegen.disabled = false;
+    btn.textContent = orig;
+  }
+}
+els.aiSuggest?.addEventListener('click', () => runSuggest('generate'));
+els.aiRegen?.addEventListener('click', () => runSuggest('generate'));
+els.aiPolish?.addEventListener('click', () => runSuggest('polish'));
+
+function resolveItem(node) {
+  if (node.classList.contains('c-sticker')) {
+    const i = +node.dataset.i; return { arr: state.stickers, item: state.stickers[i], i, type: 'sticker' };
+  }
+  if (node.classList.contains('c-textblock')) {
+    const i = +node.dataset.ti; return { arr: state.textBlocks, item: state.textBlocks[i], i, type: 'text' };
+  }
+  const i = +node.dataset.i; return { arr: state.overlays, item: state.overlays[i], i, type: 'overlay' };
+}
+
 
 function attachInteractions() {
   const surface = els.preview;
   surface.querySelectorAll('.c-sticker, .c-overlay, .c-textblock').forEach((node) => {
+    const resolved = resolveItem(node);
     node.style.pointerEvents = 'auto';
-    node.style.cursor = 'grab';
-    node.addEventListener('pointerdown', startDrag);
-    if (node.classList.contains('c-textblock')) {
-      node.addEventListener('pointerdown', () => { selectedTextBlock = +node.dataset.ti; });
-    }
+    node.style.cursor = resolved.item?.locked ? 'default' : 'grab';
+    node.addEventListener('pointerdown', startDrag);   // startDrag đã tự setSelected — không cần listener chọn riêng
     node.addEventListener('dblclick', (e) => {
       e.stopPropagation();
       const it = resolveItem(node);
+      if (it.item?.locked) return;
       // Khối chữ: nháy đúp để SỬA (không xóa). Sticker/overlay: nháy đúp để XÓA (như cũ).
       if (it.type === 'text') { startTextEdit(node, it.i); return; }
-      it.arr.splice(it.i, 1); draw();
+      it.arr.splice(it.i, 1);
+      setSelected(null, null);   // reset index để không chọn/xóa nhầm item kế (fix staleness)
+      draw();
     });
   });
 }
@@ -418,7 +1026,7 @@ function startTextEdit(node, i) {
   };
   const onBlur = () => {
     finish();
-    const txt = node.textContent.trim();
+    const txt = node.textContent.trim().slice(0, 120);   // khớp trần server (120) để preview không lệch kết quả
     if (!txt) state.textBlocks.splice(i, 1);
     else if (state.textBlocks[i]) state.textBlocks[i].text = txt;
     draw();
@@ -427,7 +1035,20 @@ function startTextEdit(node, i) {
   node.addEventListener('blur', onBlur, { once: true });
 }
 
-let drag = null;
+function snapValue(v, axis) {
+  if (state.snap === false) return { value: v, snapped: false };
+  const guides = [0, 25, 50, 75, 100];
+  for (const g of guides) {
+    if (Math.abs(v - g) <= 2.2) return { value: g, snapped: true };
+  }
+  return { value: v, snapped: false };
+}
+
+function showGuides(x, y) {
+  if (els.guideX) els.guideX.hidden = !x;
+  if (els.guideY) els.guideY.hidden = !y;
+}
+
 function startDrag(e) {
   if (drawing.on) return;
   if (e.currentTarget.isContentEditable) return; // đang sửa chữ thì không kéo
@@ -435,23 +1056,44 @@ function startDrag(e) {
   const node = e.currentTarget;
   const { arr, i } = resolveItem(node);
   const item = arr[i];
+  const type = node.classList.contains('c-textblock') ? 'text' : node.classList.contains('c-sticker') ? 'sticker' : 'overlay';
+  setSelected(type, i);
+  if (item?.locked) return;
   const rect = els.preview.getBoundingClientRect();
   drag = { item, rect, node };
   node.style.cursor = 'grabbing';
   node.setPointerCapture(e.pointerId);
   node.addEventListener('pointermove', onDrag);
+  // pointerup thường; pointercancel/lostpointercapture để không rò listener khi mất capture
+  // (menu ngữ cảnh, node bị draw() dựng lại, hệ điều hành gián đoạn).
   node.addEventListener('pointerup', endDrag, { once: true });
+  node.addEventListener('pointercancel', endDrag, { once: true });
+  node.addEventListener('lostpointercapture', endDrag, { once: true });
 }
 function onDrag(e) {
   if (!drag) return;
   const { item, rect } = drag;
-  item.x = Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100));
-  item.y = Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100));
+  const sx = snapValue(Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100)), 'x');
+  const sy = snapValue(Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100)), 'y');
+  item.x = sx.value;
+  item.y = sy.value;
+  showGuides(sx.snapped, sy.snapped);
   drag.node.style.left = item.x + '%';
   drag.node.style.top = item.y + '%';
 }
 function endDrag() {
-  if (drag) { drag.node.style.cursor = 'grab'; drag.node.removeEventListener('pointermove', onDrag); drag = null; }
+  if (drag) {
+    const node = drag.node;
+    node.style.cursor = 'grab';
+    node.removeEventListener('pointermove', onDrag);
+    // gỡ các listener kết thúc còn treo (cái đã fire tự gỡ do {once}; cái chưa thì gỡ ở đây)
+    node.removeEventListener('pointerup', endDrag);
+    node.removeEventListener('pointercancel', endDrag);
+    node.removeEventListener('lostpointercapture', endDrag);
+    drag = null;
+    showGuides(false, false);
+    draw();
+  }
 }
 
 // ---------- Canvas drawing ----------
@@ -703,15 +1345,34 @@ els.canvas.addEventListener('pointercancel', endStroke);
 
 // Xóa khối chữ đang chọn bằng Delete/Backspace — chỉ khi KHÔNG đang gõ trong
 // input/textarea/contentEditable (để không cướp phím xóa lúc soạn chữ).
+const ARROW_STEP = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 document.addEventListener('keydown', (e) => {
-  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedTextBlock != null) {
-    const ae = document.activeElement;
-    if (ae?.isContentEditable || ae?.tagName === 'INPUT' || ae?.tagName === 'TEXTAREA') return;
-    if (state.textBlocks[selectedTextBlock]) {
-      state.textBlocks.splice(selectedTextBlock, 1);
-      selectedTextBlock = null;
+  const ae = document.activeElement;
+  const typing = ae?.isContentEditable || ae?.tagName === 'INPUT' || ae?.tagName === 'TEXTAREA';
+
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selected) {
+    if (typing) return;
+    const it = selectedItem();
+    if (it && !it.item.locked) {
+      snapshotHistoryNow();   // hành động rời rạc → commit ngay, không debounce
+      it.arr.splice(it.i, 1);
+      setSelected(null, null);
       draw();
     }
+    return;
+  }
+
+  // Nudge đối tượng đang chọn bằng phím mũi tên: 1% mỗi lần, Shift = 5%.
+  // Kẹp trong [0,100]. Bỏ qua khi đang gõ trong ô nhập.
+  if (ARROW_STEP[e.key] && selected && !typing) {
+    const it = selectedItem();
+    if (!it || it.item.locked) return;
+    e.preventDefault();
+    const [dx, dy] = ARROW_STEP[e.key];
+    const step = e.shiftKey ? 5 : 1;
+    it.item.x = Math.min(100, Math.max(0, (it.item.x ?? 50) + dx * step));
+    it.item.y = Math.min(100, Math.max(0, (it.item.y ?? 50) + dy * step));
+    draw();
   }
 });
 
@@ -739,6 +1400,7 @@ els.createBtn.addEventListener('click', async () => {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || t('ed.createFail'));
+    clearDraft();   // tạo xong -> bỏ nháp để lần sau vào /create là trắng
     showSuccess(data);
   } catch (err) {
     toast(err.message);
@@ -754,17 +1416,33 @@ function showSuccess({ id, manageToken }) {
   $('#manageLink').value = `${origin}/m/${manageToken}`;
   $('#openCard').href = shareUrl;
   renderQR(shareUrl);
+  // Nút chia sẻ native (Web Share API) — chỉ hiện nếu trình duyệt hỗ trợ (đa phần mobile).
+  const shareBtn = $('#shareBtn');
+  if (shareBtn && navigator.share) {
+    shareBtn.hidden = false;
+    shareBtn.onclick = () => {
+      navigator.share({ title: state.title || t('modal.h3'), text: t('modal.shareText'), url: shareUrl }).catch(() => {});
+    };
+  }
   $('#successModal').hidden = false;
 }
 
 // Vẽ QR cho link gửi đi. Dùng thư viện qrcode (nạp qua CDN ở create.html).
+// Tô QR theo màu accent của thiệp cho đồng bộ; nền vẫn trắng để đảm bảo quét được.
 function renderQR(url) {
   const box = $('#qrBox');
   if (!box) return;
   box.innerHTML = '';
   if (typeof window.QRCode === 'undefined') { box.hidden = true; return; }
+  // accent tối thì dùng làm màu QR; nếu quá nhạt (khó quét) thì lùi về đen.
+  const accent = /^#[0-9a-fA-F]{6}$/.test(state.accent || '') ? state.accent : '#111111';
+  const dark = contrastRatio(accent, '#ffffff') >= 3 ? accent : '#111111';
   try {
-    new window.QRCode(box, { text: url, width: 132, height: 132, correctLevel: window.QRCode.CorrectLevel.M });
+    new window.QRCode(box, {
+      text: url, width: 132, height: 132,
+      colorDark: dark, colorLight: '#ffffff',
+      correctLevel: window.QRCode.CorrectLevel.M,
+    });
     box.hidden = false;
   } catch { box.hidden = true; }
 }
@@ -807,8 +1485,14 @@ buildLangSwitcher($('#langSelect'));
 initThemeToggle();
 window.addEventListener('langchange', () => {
   applyI18n();
+  const d = localizedDefaultsFor(state.template || 'birthday');
+  if (!touched.has('title')) state.title = d.title;
+  if (!touched.has('message')) state.message = d.message;
+  syncInputsFromState();
   // dịch lại tên template (được thêm động)
   document.querySelectorAll('#templateGrid [data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  buildDesignPresets();
+  renderSavedTemplates();
   draw(); // cập nhật nhãn "Gửi" trên thiệp
 });
 
@@ -816,14 +1500,64 @@ window.addEventListener('langchange', () => {
 buildTemplateGrid();
 buildStickerPicker();
 buildPaletteGrid();
+buildDesignPresets();
+renderSavedTemplates();
 markTemplate('birthday');
+ensureDesignState();
 syncInputsFromState();
 applyI18n();
 state.recipientLabel = t('to');
 renderCard(els.preview, state);
 attachInteractions();
+syncDesignPanels();
 if (els.hero) renderCard(els.hero, { ...defaultsFor('love'), recipientLabel: t('to') });
 window.addEventListener('resize', () => { if (drawing.on) resizeCanvas(); });
+
+// ---------- Tự lưu nháp vào localStorage ----------
+// Lưu state (kèm base64) sau mỗi thay đổi, debounce 800ms. Chỉ ở chế độ /create thuần
+// (không edit/clone). Khôi phục khi quay lại nếu người dùng chưa tạo xong. Bỏ nháp sau
+// khi tạo thành công. try/catch vì quota localStorage có thể đầy do ảnh base64.
+const DRAFT_KEY = 'cardmaker.draft';
+const isFreshCreate = !new URLSearchParams(location.search).get('edit')
+  && !new URLSearchParams(location.search).get('clone')
+  && new URLSearchParams(location.search).get('reply') !== '1';
+let draftTimer = 0;
+function saveDraft() {
+  if (!isFreshCreate) return;
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ state: cloneState(), touched: [...touched], days: selectedDays, savedAt: Date.now() }));
+    } catch { /* quota đầy (ảnh lớn) — bỏ qua, không chặn thao tác */ }
+  }, 800);
+}
+function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch {} }
+function restoreDraft() {
+  if (!isFreshCreate) return false;
+  let saved;
+  try { saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch { return false; }
+  if (!saved?.state) return false;
+  state = { ...defaultsFor(saved.state.template || 'birthday'), ...saved.state };
+  ensureDesignState();
+  (saved.touched || []).forEach((k) => touched.add(k));
+  if (Array.isArray(saved.days)) selectedDays = saved.days;
+  else if (saved.days) selectedDays = saved.days;
+  if (state.template) markTemplate(state.template);
+  setActive('#durationSeg', 'days', String(selectedDays));
+  syncInputsFromState();
+  state.recipientLabel = t('to');
+  renderCard(els.preview, state);
+  attachInteractions();
+  syncDesignPanels();
+  toast(t('ed.draftRestored'));
+  return true;
+}
+// bắt mọi thay đổi trong khu vực soạn (capture-phase, cùng chỗ history)
+['input', 'change', 'pointerup'].forEach((ev) =>
+  document.addEventListener(ev, (e) => {
+    if (isRestoringHistory) return;
+    if (e.target?.closest?.('.editor-controls, .preview-stage')) saveDraft();
+  }, true));
 
 // ---------- Chế độ sửa (#1) / nhân bản (#4) ----------
 // /create?edit=<token>  -> nạp & LƯU ĐÈ thiệp cũ.
@@ -840,6 +1574,7 @@ window.addEventListener('resize', () => { if (drawing.on) resizeCanvas(); });
     const data = await res.json();
     // nạp payload vào state; coi mọi trường là "đã chỉnh" để không bị template ghi đè
     state = { ...defaultsFor(data.payload.template || 'birthday'), ...data.payload };
+    ensureDesignState();
     Object.keys(state).forEach((k) => touched.add(k));
     if (state.template) markTemplate(state.template);
     if (state.guestbook) els.guestbook.checked = true;
@@ -858,3 +1593,21 @@ window.addEventListener('resize', () => { if (drawing.on) resizeCanvas(); });
     toast(t('mn.invalid.p'));
   }
 })();
+
+// Thiệp phản hồi: /create?reply=1&to=&from= -> prefill người nhận/người gửi (đảo vai),
+// để trống tiêu đề+lời nhắn cho người dùng tự viết. Không đụng edit/clone/token.
+(function maybeReplyPrefill() {
+  const params = new URLSearchParams(location.search);
+  if (params.get('reply') !== '1') return false;
+  const to = (params.get('to') || '').slice(0, 80);
+  const from = (params.get('from') || '').slice(0, 80);
+  if (to) { state.recipient = to; touched.add('recipient'); }
+  if (from) { state.sender = from; touched.add('sender'); }
+  syncInputsFromState();
+  draw();
+  return true;
+})();
+
+// Khôi phục nháp nếu là /create thuần và có nháp đã lưu (chạy sau init, không đụng edit/clone).
+// Bỏ qua khi đang ở chế độ reply prefill (đã điền sẵn, không ghi đè bằng nháp cũ).
+if (new URLSearchParams(location.search).get('reply') !== '1') restoreDraft();
